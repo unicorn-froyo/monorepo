@@ -1,0 +1,19 @@
+load("@pip//:requirements.bzl", "requirement")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "requests",
+    srcs = [requirement("requests")],
+    deps = [
+        requirement("certifi"),
+        requirement("chardet"),
+        requirement("idna"),
+        requirement("urllib3"),
+    ],
+)
+
+py_library(
+    name = "urllib3",
+    srcs = [requirement("urllib3")],
+)

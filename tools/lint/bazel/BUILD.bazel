@@ -1,0 +1,8 @@
+load(":index.bzl", "bazel_lint_test")
+
+bazel_lint_test(
+    name = "tools_bazel_bazel_lint_test",
+    data = [
+        "BUILD.bazel",
+    ],
+)
