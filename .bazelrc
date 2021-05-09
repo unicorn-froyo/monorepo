@@ -2,6 +2,6 @@ common --host_javabase=@bazel_tools//tools/jdk:remote_jdk11
 common --javabase=@bazel_tools//tools/jdk:remote_jdk11
 common --host_java_toolchain=@bazel_tools//tools/jdk:toolchain_java11
 common --java_toolchain=@bazel_tools//tools/jdk:toolchain_java11
-common --action_env=PATH=/bin:/usr/bin:/usr/local/bin
 common --python_version=PY3
 test --test_output=errors
+test --incompatible_use_python_toolchains

@@ -3,6 +3,13 @@ load("@pip//:requirements.bzl", "requirement")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "coverage",
+    srcs = [
+        requirement("coverage"),
+    ],
+)
+
+py_library(
     name = "requests",
     srcs = [requirement("requests")],
     deps = [
