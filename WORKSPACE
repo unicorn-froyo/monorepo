@@ -6,20 +6,38 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # Python
 ###########################
 
+_py_configure = """
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    ./configure --prefix=$(pwd)/bazel_install --with-openssl=$(brew --prefix openssl)
+else
+    ./configure --prefix=$(pwd)/bazel_install
+fi
+"""
+
 http_archive(
-    name = "Python",
+    name = "python_interpreter",
     build_file_content = """
-genrule(
-    name = "build_python",
-    srcs = glob(["**"]),
-    outs = ["python"],
-    cmd = "./external/Python/configure && make && cp python $@",
+exports_files(["python_bin"])
+
+filegroup(
+    name = "files",
+    srcs = glob(["bazel_install/**"], exclude = ["**/* *"]),
     visibility = ["//visibility:public"],
-)""",
+)
+""",
+    patch_cmds = [
+        "mkdir $(pwd)/bazel_install",
+        _py_configure,
+        "make",
+        "make install",
+        "ln -s bazel_install/bin/python3 python_bin",
+    ],
     sha256 = "9779ec1df000bf86914cdd40860b88da56c1e61db59d37784beca14a259ac9e9",
     strip_prefix = "Python-3.8.9",
     urls = ["https://www.python.org/ftp/python/3.8.9/Python-3.8.9.tgz"],
 )
+
+register_toolchains("//toolchains/python:py_toolchain")
 
 ###########################
 # Rules Python
@@ -31,7 +49,6 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
 )
 
-# load("@bazel_tools//tools/python:toolchain.bzl", "")
 load("@rules_python//python:pip.bzl", "pip_parse")
 
 # Create a central repo that knows about the dependencies needed from

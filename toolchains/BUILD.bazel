@@ -1,6 +1,0 @@
-py_runtime(
-    name = "python-3.8.9",
-    files = [],
-    interpreter = "@Python//:python",
-    python_version = "PY3",
-)

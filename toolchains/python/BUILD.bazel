@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+
+toolchain(
+    name = "py_toolchain",
+    toolchain = "//third_party/python:py_runtime_3",
+    toolchain_type = "@bazel_tools//tools/python:toolchain_type",
+)
