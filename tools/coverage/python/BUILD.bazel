@@ -1,6 +1,7 @@
 load("//tools/lint/bazel:index.bzl", "bazel_lint_test")
-load(":index.bzl", "py_coverage_test")
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+package(default_visibility = ["//visibility:public"])
 
 bazel_lint_test(
     name = "python_coverage_bazel_lint_test",
@@ -19,15 +20,4 @@ py_binary(
     srcs = [":coverage_bin.py"],
     main = ":coverage_bin.py",
     deps = ["//third_party/pypi:coverage"],
-)
-
-py_library(
-    name = "py_coverage_test_lib",
-    srcs = [":main.py"],
-)
-
-py_coverage_test(
-    name = "py_coverage_test_test",
-    srcs = [":main_test.py"],
-    deps = [":py_coverage_test_lib"],
 )

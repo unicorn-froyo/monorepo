@@ -1,0 +1,21 @@
+load("//tools/lint/bazel:index.bzl", "bazel_lint_test")
+load("//tools/coverage/python:index.bzl", "py_coverage_test")
+load("@rules_python//python:defs.bzl", "py_library")
+
+bazel_lint_test(
+    name = "api_base_bazel_lint_test",
+    data = [
+        "BUILD.bazel",
+    ],
+)
+
+py_library(
+    name = "api_base_py_lib",
+    srcs = [":abstract_api_base.py"],
+)
+
+py_coverage_test(
+    name = "api_base_py_coverage_test",
+    srcs = [":abstract_api_base_test.py"],
+    deps = [":api_base_py_lib"],
+)
