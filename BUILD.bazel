@@ -1,14 +1,17 @@
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
-load("//tools/lint/bazel:index.bzl", "bazel_lint_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 buildifier(
     name = "buildifier",
 )
 
-bazel_lint_test(
-    name = "workspace_bazel_lint_test",
-    data = [
-        "*.bazel",
-        "WORKSPACE",
-    ],
+bzl_lint_test(
+    name = "workspace_bzl_lint_test",
+    data =
+        glob([
+            "*.bazel",
+            "*.bzl",
+        ]) + [
+            "WORKSPACE",
+        ],
 )

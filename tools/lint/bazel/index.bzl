@@ -1,4 +1,4 @@
-"""index.bzl provides the bazel_lint_test rule"""
+"""index.bzl provides the bzl_lint_test rule"""
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
@@ -6,7 +6,7 @@ def _check_file(f):
     base = f.basename
     return base in ("WORKSPACE", "BUILD", "BUILD.bazel") or base.endswith(".bzl")
 
-def _bazel_lint_test_impl(ctx):
+def _bzl_lint_test_impl(ctx):
     files = [f for f in ctx.files.data if _check_file(f)]
 
     script = ctx.actions.declare_file(ctx.label.name + ".bash")
@@ -49,8 +49,8 @@ exit $ok
         ),
     )]
 
-bazel_lint_test = rule(
-    implementation = _bazel_lint_test_impl,
+bzl_lint_test = rule(
+    implementation = _bzl_lint_test_impl,
     attrs = {
         "data": attr.label_list(
             allow_files = True,
