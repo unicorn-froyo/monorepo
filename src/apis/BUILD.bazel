@@ -1,13 +1,14 @@
-load("//tools/lint/bazel:index.bzl", "bazel_lint_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/lint/python:index.bzl", "py_lint_test")
 load("@rules_python//python:defs.bzl", "py_library")
 
-bazel_lint_test(
-    name = "api_base_bazel_lint_test",
-    data = [
-        "BUILD.bazel",
-    ],
+bzl_lint_test(
+    name = "api_base_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
 )
 
 py_library(
