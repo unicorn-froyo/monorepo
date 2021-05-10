@@ -1,6 +1,5 @@
-"""index.bzl provides the bazel_lint_test rule"""
+"""index.bzl provides the py_coverage_test rule"""
 
-# load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@rules_python//python:defs.bzl", "PyInfo")
 
 def _py_coverage_test(ctx):
@@ -8,11 +7,19 @@ def _py_coverage_test(ctx):
     test_files = " ".join([s.short_path for s in ctx.files.srcs])
 
     python_path = ":".join([p.short_path for p in ctx.files._py_coverage_bin] + [s.short_path for s in ctx.files.srcs] + [s.short_path for s in ctx.files.deps])
-
-    script_content = """
-PYTHONPATH={python_path}
-{coverage_bin} run --rcfile={config_path} -m unittest {files} && {coverage_bin} report --rcfile={config_path}
-        """.format(python_path = python_path, coverage_bin = ctx.executable._py_coverage_bin.short_path, files = test_files, config_path = ctx.files._coverage_config[0].short_path)
+    script_content = "\n".join([
+        "#!/bin/sh",
+        "PYTHONPATH={python_path}".format(python_path = python_path),
+        "{coverage_bin} run --rcfile={config_path} -m unittest {files}".format(
+            coverage_bin = ctx.executable._py_coverage_bin.short_path,
+            files = test_files,
+            config_path = ctx.files._coverage_config[0].short_path,
+        ),
+        "{coverage_bin} report --rcfile={config_path}".format(
+            coverage_bin = ctx.executable._py_coverage_bin.short_path,
+            config_path = ctx.files._coverage_config[0].short_path,
+        ),
+    ])
 
     ctx.actions.write(script, script_content, is_executable = True)
 
