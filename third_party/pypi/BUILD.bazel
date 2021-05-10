@@ -3,9 +3,30 @@ load("@pip//:requirements.bzl", "requirement")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "astroid",
+    srcs = [requirement("astroid")],
+    deps = [
+        requirement("lazy-object-proxy"),
+        requirement("wrapt"),
+    ],
+)
+
+py_library(
     name = "coverage",
     srcs = [
         requirement("coverage"),
+    ],
+)
+
+py_library(
+    name = "pylint",
+    srcs = [requirement("pylint")],
+    deps = [
+        ":astroid",
+        requirement("astroid"),
+        requirement("isort"),
+        requirement("mccabe"),
+        requirement("toml"),
     ],
 )
 

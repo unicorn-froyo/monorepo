@@ -1,0 +1,23 @@
+load("//tools/lint/bazel:index.bzl", "bazel_lint_test")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+bazel_lint_test(
+    name = "python_lint_bazel_lint_test",
+    data = [
+        "BUILD.bazel",
+    ],
+)
+
+filegroup(
+    name = "pylint_config",
+    srcs = [":.pylintrc"],
+)
+
+py_binary(
+    name = "pylint_bin",
+    srcs = [":pylint_bin.py"],
+    main = ":pylint_bin.py",
+    deps = ["//third_party/pypi:pylint"],
+)
