@@ -29,7 +29,7 @@ Once installed build is as simple as running the below command.
 
 ```bash
 # if not using bazelisk replace w/ bazel
-bazelisk build //...
+$ bazelisk build //...
 ```
 
 ### Test
@@ -38,5 +38,5 @@ Testing your projects is as simple as running the below command.
 
 ```bash
 # if not using bazelisk replace w/ bazel
-bazelisk test //...
+$ bazelisk test //...
 ```
