@@ -3,7 +3,7 @@
 load("@rules_python//python:defs.bzl", "PyInfo")
 
 def _py_coverage_test(ctx):
-    script = ctx.actions.declare_file(ctx.label.name + "runfiles.sh")
+    script = ctx.actions.declare_file(ctx.label.name + ".sh")
     test_files = " ".join([s.short_path for s in ctx.files.srcs])
 
     python_path = ":".join([p.short_path for p in ctx.files._py_coverage_bin] + [s.short_path for s in ctx.files.srcs] + [s.short_path for s in ctx.files.deps])
