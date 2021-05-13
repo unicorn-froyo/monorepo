@@ -9,7 +9,7 @@ def _check_file(f):
 def _bzl_lint_test_impl(ctx):
     files = [f for f in ctx.files.data if _check_file(f)]
 
-    script = ctx.actions.declare_file(ctx.label.name + ".bash")
+    script = ctx.actions.declare_file(ctx.label.name + ".sh")
     content = """#!/usr/bin/env bash
 set -uo pipefail
 files=(
