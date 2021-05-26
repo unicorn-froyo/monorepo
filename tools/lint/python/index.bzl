@@ -1,16 +1,7 @@
 """index.bzl provides the py_lint_test rule"""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
-
-def get_transitive_files(label):
-    """Get transitive sources for python files
-
-    Args:
-      label: A label of a python library.
-    Returns:
-      A list of transitive source files.
-    """
-    return label[PyInfo].transitive_sources.to_list()
+load("//tools:utils.bzl", "get_transitive_files")
 
 def _py_lint_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
@@ -51,7 +42,6 @@ py_lint_test = rule(
             providers = [PyInfo],
         ),
         "deps": attr.label_list(
-            allow_files = True,
             providers = [PyInfo],
         ),
         "data": attr.label_list(
