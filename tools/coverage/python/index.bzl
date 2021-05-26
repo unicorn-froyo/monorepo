@@ -1,6 +1,7 @@
 """index.bzl provides the py_coverage_test rule"""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
+load("//tools:utils.bzl", "get_transitive_deps")
 
 def _py_coverage_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
@@ -26,7 +27,13 @@ def _py_coverage_test(ctx):
     return [DefaultInfo(
         executable = script,
         runfiles = ctx.runfiles(
-            files = [script] + ctx.files._py_coverage_bin + ctx.files._python_bin + ctx.files._coverage_py + ctx.files._coverage_config + ctx.files.srcs + ctx.files.deps + ctx.files.data,
+            files = [script] +
+                    ctx.files._py_coverage_bin +
+                    ctx.files._python_bin +
+                    ctx.files._coverage_py +
+                    ctx.files._coverage_config +
+                    ctx.files.srcs + ctx.files.deps +
+                    ctx.files.data + get_transitive_deps(ctx.attr.deps),
         ),
     )]
 
@@ -38,7 +45,6 @@ py_coverage_test = rule(
             providers = [PyInfo],
         ),
         "deps": attr.label_list(
-            allow_files = True,
             providers = [PyInfo],
         ),
         "data": attr.label_list(
