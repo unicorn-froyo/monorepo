@@ -14,8 +14,8 @@ def get_transitive_deps(deps, provider = PyInfo):
     """Get Transitive Dependencies
 
       Args:
-          deps (label_list): label list of dependencies
-          provider ([Provider, optional): The provider of the dependencies. Defaults to PyInfo.
+          deps: label list of dependencies
+          provider: The provider of the dependencies. Defaults to PyInfo.
 
       Returns:
           [list]: List of files dependency files

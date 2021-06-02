@@ -1,0 +1,18 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+bzl_lint_test(
+    name = "packaging_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)
+
+py_binary(
+    name = "package_api_bin",
+    srcs = [":package_bin.py"],
+    main = ":package_bin.py",
+)

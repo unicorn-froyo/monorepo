@@ -1,7 +1,8 @@
+load("@pip//:requirements.bzl", "requirement")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/lint/python:index.bzl", "py_lint_test")
-load("@rules_python//python:defs.bzl", "py_library")
+load("//tools/package:index.bzl", "package_api")
 
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
@@ -14,7 +15,10 @@ bzl_lint_test(
 py_library(
     name = "get_widgets_example_py_lib",
     srcs = [":get_widgets.py"],
-    deps = ["//src/apis:api_base_py_lib"],
+    deps = [
+        "//src/apis:api_base_py_lib",
+        requirement("boto3"),
+    ],
 )
 
 py_coverage_test(
@@ -26,4 +30,9 @@ py_coverage_test(
 py_lint_test(
     name = "get_widgets_example_py_lint_test",
     srcs = glob(["*.py"]),
+)
+
+package_api(
+    name = "get_widgets_example_pkg",
+    srcs = ["get_widgets_example_py_lib"],
 )
