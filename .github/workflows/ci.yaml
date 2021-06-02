@@ -5,8 +5,7 @@ on:
   pull_request:
 
 jobs:
-  build:
-    name: CI
+  bazel_build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,3 +30,10 @@ jobs:
       - name: Test
         run: |
           "${GITHUB_WORKSPACE}/bin/bazel" test //...
+  docker_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Docker Build
+        run: docker build .github
