@@ -1,8 +1,14 @@
-name: Continuous Integration
+name: Bazel Build & Test
 
 on:
   workflow_dispatch:
+    paths-ignore:
+      - ".github/Dockerfile"
   pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - ".github/Dockerfile"
 
 jobs:
   bazel_build:
@@ -30,10 +36,3 @@ jobs:
       - name: Test
         run: |
           "${GITHUB_WORKSPACE}/bin/bazel" test //...
-  docker_build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Docker Build
-        run: docker build .github
