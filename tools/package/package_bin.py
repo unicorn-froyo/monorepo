@@ -24,17 +24,17 @@ class Package:
         """
         self.files = args.files.split(",") if args.files else args.files
         self.runtime = args.runtime
+        self.output_file = args.output_file
 
     def execute(self) -> None:
         if not self.files:
             raise ValueError("No files were supplied")
         if self.runtime != LambdaRuntimes.python.value:
             raise NotImplementedError("Only python is supported at this time")
-        
-        zip_file = ZipFile("package.zip", "w")
 
-        for src in self.files:
-            zip_file.write(src, ZIP_DEFLATED)
+        with ZipFile(self.output_file, "w") as file:
+            for src in self.files:
+                file.write(src)
 
 
 if __name__ == "__main__":
@@ -58,5 +58,9 @@ if __name__ == "__main__":
         help="The runtime environment for the package.",
         choices=LambdaRuntimes.values(),
     )
-    args = parser.parse_args()
-    Package(args=args).execute()
+    parser.add_argument(
+        "-",
+        "--output-file",
+        help="The path to set the package.",
+    )
+    Package(args=parser.parse_args()).execute()

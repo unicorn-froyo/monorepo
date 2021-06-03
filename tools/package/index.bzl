@@ -4,37 +4,21 @@ load("@rules_python//python:defs.bzl", "PyInfo")
 load("//tools:utils.bzl", "get_transitive_deps")
 
 def _package_api(ctx):
-    # script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    output_file = ctx.actions.declare_file("package.zip")
-
+    output_file = ctx.actions.declare_file(ctx.attr.name + ".zip")
+    files = ctx.files._packaging_bin + ctx.files._python_bin + ctx.files.srcs + ctx.files.data + get_transitive_deps(ctx.attr.srcs)
     args = ctx.actions.args()
-    args.add_joined([s.short_path for s in get_transitive_deps(ctx.attr.srcs)], join_with = ",")
+    args.add_joined([s.path for s in get_transitive_deps(ctx.attr.srcs)], join_with = ",")
+    args.add("--output-file", output_file.path)
     ctx.actions.run(
         mnemonic = "Packaging",
         executable = ctx.executable._packaging_bin,
         arguments = [args],
-        # inputs = inputs,
+        inputs = files,
         outputs = [output_file],
     )
 
-    # ctx.actions.write(
-    #     output = output_file,
-    #     content = "hello",
-    # )
-    print(output_file.short_path)
-
-    # ctx.actions.write(script, script_content, is_executable = True)
     return [DefaultInfo(
-        # executable = script,
-        runfiles = ctx.runfiles(
-            files =
-                # [script] +
-                ctx.files._packaging_bin +
-                ctx.files._python_bin +
-                ctx.files.srcs +
-                ctx.files.data +
-                get_transitive_deps(ctx.attr.srcs),
-        ),
+        files = depset([output_file]),
     )]
 
 package_api = rule(
@@ -58,5 +42,4 @@ package_api = rule(
             allow_files = True,
         ),
     },
-    outputs = {"zip": "package.zip"},
 )
