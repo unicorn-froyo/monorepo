@@ -1,21 +1,15 @@
-import os
+"""API Packaging Binary for package_api rule
+"""
 from argparse import ArgumentParser, Namespace
-from enum import Enum
 from textwrap import dedent
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile
+
+from tools.package.package_runtimes import LambdaRuntimes
 
 
-class LambdaRuntimes(Enum):
-    python = "python"
-    nodejs = "nodejs"
-    go = "go"
+class Package:  # pylint: disable=too-few-public-methods
+    """Creates the lambda compatible package"""
 
-    @classmethod
-    def values(cls):
-        return list(map(lambda c: c.value, cls))
-
-
-class Package:
     def __init__(self, args: Namespace):
         """Constructor Method
 
@@ -27,9 +21,15 @@ class Package:
         self.output_file = args.output_file
 
     def execute(self) -> None:
+        """Execute the packaging binary
+
+        Raises:
+            ValueError: Raises if the first positional argument is empty.
+            NotImplementedError: Raises when not using python.
+        """
         if not self.files:
             raise ValueError("No files were supplied")
-        if self.runtime != LambdaRuntimes.python.value:
+        if self.runtime != LambdaRuntimes.PYTHON.value:
             raise NotImplementedError("Only python is supported at this time")
 
         with ZipFile(self.output_file, "w") as file:
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         "--runtime",
-        default=LambdaRuntimes.python.value,
+        default=LambdaRuntimes.PYTHON.value,
         help="The runtime environment for the package.",
         choices=LambdaRuntimes.values(),
     )
