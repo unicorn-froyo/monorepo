@@ -11,6 +11,7 @@ def _py_coverage_test(ctx):
     script_content = "\n".join([
         "#!/bin/sh",
         "PYTHONPATH={python_path}".format(python_path = python_path),
+        "set -e",
         "{coverage_bin} run --rcfile={config_path} -m unittest {files}".format(
             coverage_bin = ctx.executable._py_coverage_bin.short_path,
             files = test_files,
