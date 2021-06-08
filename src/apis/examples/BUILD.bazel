@@ -3,6 +3,7 @@ load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/lint/python:index.bzl", "py_lint_test")
 load("//tools/package:index.bzl", "package_api")
+load("//tools/deploy/api:index.bzl", "deploy_api")
 
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
@@ -34,5 +35,19 @@ py_lint_test(
 
 package_api(
     name = "get_widgets_example_pkg",
-    srcs = ["get_widgets_example_py_lib"],
+    srcs = [":get_widgets_example_py_lib"],
+)
+
+deploy_api(
+    name = "get-widgets-qa",
+    deployment_zone = "//src/zones/examples:example_qa",
+    package = ":get_widgets_example_pkg",
+    tags = ["qa"],
+)
+
+deploy_api(
+    name = "get-widgets-prod",
+    deployment_zone = "//src/zones/examples:example_prod",
+    package = ":get_widgets_example_pkg",
+    tags = ["prod"],
 )
