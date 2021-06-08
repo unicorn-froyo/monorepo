@@ -1,0 +1,34 @@
+load("//tools/deploy:deploy.bzl", "deployment_zone")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+package(default_visibility = ["//src/apis/examples:__subpackages__"])
+
+bzl_lint_test(
+    name = "zones_example_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)
+
+deployment_zone(
+    name = "example_prod",
+    account_id = "123456789012",
+    deployment_role = "ProdDeploy",
+    owner_role = "ProdSupport",
+    subnet_ids = {
+        "us-east-1": ["subnet-123456789"],
+        "us-west-2": ["subnet-234567890"],
+    },
+)
+
+deployment_zone(
+    name = "example_qa",
+    account_id = "234567890123",
+    deployment_role = "QADeploy",
+    owner_role = "QADeveloper",
+    subnet_ids = {
+        "us-east-1": ["subnet-345678901"],
+        "us-west-2": ["subnet-456789012"],
+    },
+)
