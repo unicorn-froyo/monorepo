@@ -10,6 +10,7 @@ DeploymentZoneInfo = provider(
     fields = {
         "account_id": "The AWS Account ID.",
         "deployment_role": "The IAM Role used in the Deployments.",
+        "owner_contact": "The team who owns this infrastructure.",
         "owner_role": "The Support Role Assigned to the Development Team.",
         "subnet_ids": "The list of subnets in which code will be deployed.",
     },

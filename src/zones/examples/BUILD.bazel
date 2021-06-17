@@ -15,6 +15,7 @@ deployment_zone(
     name = "example_prod",
     account_id = "123456789012",
     deployment_role = "ProdDeploy",
+    owner_contact = "example@email.com",
     owner_role = "ProdSupport",
     subnet_ids = {
         "us-east-1": ["subnet-123456789"],
@@ -26,6 +27,7 @@ deployment_zone(
     name = "example_qa",
     account_id = "234567890123",
     deployment_role = "QADeploy",
+    owner_contact = "example@email.com",
     owner_role = "QADeveloper",
     subnet_ids = {
         "us-east-1": ["subnet-345678901"],

@@ -1,11 +1,36 @@
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("@rules_python//python:defs.bzl", "py_binary")
+load("//tools/coverage/python:index.bzl", "py_coverage_test")
+load("//tools/lint/python:index.bzl", "py_lint_test")
 
 package(default_visibility = ["//visibility:public"])
 
 bzl_lint_test(
-    name = "packaging_bzl_lint_test",
+    name = "deploy_api_bzl_lint_test",
     data = glob([
         "*.bazel",
         "*.bzl",
     ]),
+)
+
+py_binary(
+    name = "deploy_api_bin",
+    srcs = [":deploy_api.py"],
+    main = ":deploy_api.py",
+    deps = ["//third_party/pypi:boto3"],
+)
+
+py_coverage_test(
+    name = "deploy_api_py_coverage_test",
+    srcs = [
+        "deploy_api_test.py",
+    ],
+    deps = [
+        ":deploy_api_bin",
+    ],
+)
+
+py_lint_test(
+    name = "deploy_api_bin_py_lint_test",
+    srcs = glob(["*.py"]),
 )
