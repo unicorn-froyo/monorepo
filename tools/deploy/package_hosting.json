@@ -1,0 +1,125 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for deploying package hosting stacks.",
+  "Parameters": {
+    "BucketName": {
+      "Description": "The name of the package hosting bucket.",
+      "Type": "String"
+    },
+    "DeploymentRole": {
+      "Description": "The role used by the deployment system.",
+      "Type": "String"
+    },
+    "OwnerRole": {
+      "Description": "The ProdSupport/Developer role of the maintaining team.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Ref": "BucketName" },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Status": "Enabled",
+              "ExpirationInDays": 365,
+              "Transitions": [
+                {
+                  "TransitionInDays": 30,
+                  "StorageClass": "STANDARD_IA"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "BucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "BucketName" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "DenyAll",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "BucketName" }]]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    ["arn:aws:s3:::", { "Ref": "BucketName" }, "/*"]
+                  ]
+                }
+              ],
+              "Condition": {
+                "StringNotEquals": {
+                  "AWS": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:sts::",
+                          { "Ref": "AWS::AccountId" },
+                          "assumed-role/",
+                          { "Ref": "DeploymentRole" },
+                          "/*"
+                        ]
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:sts::",
+                          { "Ref": "AWS::AccountId" },
+                          "assumed-role/",
+                          { "Ref": "OwnerRole" },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "BlockInsecureTransport",
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Resource": [
+                {
+                  "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "BucketName" }]]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    ["arn:aws:s3:::", { "Ref": "BucketName" }, "/*"]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Principal": "*"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {}
+}

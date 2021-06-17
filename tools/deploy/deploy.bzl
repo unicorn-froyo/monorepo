@@ -10,6 +10,7 @@ def _deployment_zone_impl(ctx):
         DeploymentZoneInfo(
             account_id = ctx.attr.account_id,
             deployment_role = ctx.attr.deployment_role,
+            owner_contact = ctx.attr.owner_contact,
             owner_role = ctx.attr.owner_role,
             subnet_ids = ctx.attr.subnet_ids,
         ),
@@ -20,6 +21,7 @@ deployment_zone = rule(
     attrs = {
         "account_id": attr.string(doc = "The AWS Account ID.", mandatory = True),
         "deployment_role": attr.string(doc = "The IAM Role used in deployment.", mandatory = True),
+        "owner_contact": attr.string(doc = "The contact information assocaited with this infra.", mandatory = True),
         "owner_role": attr.string(doc = "The IAM Role used by support teams.", mandatory = True),
         "subnet_ids": attr.string_list_dict(doc = "The AWS Subnets where application infrastructure will be deployed.", mandatory = True),
     },
