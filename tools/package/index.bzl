@@ -9,9 +9,10 @@ def _package_api(ctx):
     if PyInfo in ctx.attr.srcs[0]:
         language = "python"
     output_file = ctx.actions.declare_file(ctx.attr.name + ".zip")
-    files = ctx.files._packaging_bin + ctx.files._python_bin + ctx.files.srcs + ctx.files.data + get_transitive_deps(ctx.attr.srcs)
+    transitive_files = get_transitive_deps(ctx.attr.srcs)
+    files = ctx.files._packaging_bin + ctx.files._python_bin + ctx.files.srcs + ctx.files.data + transitive_files
     args = ctx.actions.args()
-    args.add_joined([s.path for s in get_transitive_deps(ctx.attr.srcs)], join_with = ",")
+    args.add_joined([s.path for s in ctx.files.srcs], join_with = ",")
     args.add("--output-file", output_file.path)
     args.add("--runtime", language)
     ctx.actions.run(

@@ -10,7 +10,7 @@ def get_transitive_files(label):
     """
     return label[PyInfo].transitive_sources.to_list()
 
-def get_transitive_deps(deps, provider = PyInfo):
+def get_transitive_deps(deps):
     """Get Transitive Dependencies
 
       Args:
@@ -23,7 +23,7 @@ def get_transitive_deps(deps, provider = PyInfo):
     transitive_deps = []
 
     for dep in deps:
-        for d in dep[provider].transitive_sources.to_list():
+        for d in dep[DefaultInfo].data_runfiles.files.to_list():
             if d not in transitive_deps:
                 transitive_deps.append(d)
     return transitive_deps
