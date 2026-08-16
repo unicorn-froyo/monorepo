@@ -1,16 +1,19 @@
-load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/python:index.bzl", "py_lint_test")
 
 package(default_visibility = ["//visibility:public"])
 
 bzl_lint_test(
     name = "packaging_bzl_lint_test",
-    data = glob([
-        "*.bazel",
-        "*.bzl",
-    ]),
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
 )
 
 py_binary(

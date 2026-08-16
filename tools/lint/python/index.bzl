@@ -22,17 +22,17 @@ def _py_lint_test(ctx):
 
     ctx.actions.write(script, script_content, is_executable = True)
 
-    return [
-        DefaultInfo(
-            executable = script,
-            runfiles = ctx.runfiles(
-                files = [script] + ctx.files._pylint_bin +
-                        ctx.files._python_bin + ctx.files._pylint_config +
-                        ctx.files.srcs + ctx.files.deps + ctx.files.data +
-                        get_transitive_files(ctx.attr._pylint_py),
-            ),
-        ),
-    ]
+    runfiles = ctx.runfiles(
+        files = [script] + ctx.files._python_bin + ctx.files._pylint_config +
+                ctx.files.srcs + ctx.files.deps + ctx.files.data +
+                get_transitive_files(ctx.attr._pylint_py),
+    )
+    runfiles = runfiles.merge(ctx.attr._pylint_bin[DefaultInfo].default_runfiles)
+
+    return [DefaultInfo(
+        executable = script,
+        runfiles = runfiles,
+    )]
 
 py_lint_test = rule(
     implementation = _py_lint_test,

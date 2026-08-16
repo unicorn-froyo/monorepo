@@ -1,22 +1,19 @@
-FROM ubuntu:18.04
+FROM ubuntu:24.04
 
-ENV PATH="$PATH:$HOME/bin"
-
-RUN apt update && \
-    apt upgrade -y
+ARG BAZELISK_VERSION=1.29.0
 
 RUN apt-get update && \
-    apt-get install software-properties-common -y
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+        ca-certificates \
+        curl \
+        g++ \
+        libssl-dev \
+        make \
+        unzip \
+        zip && \
+    rm -rf /var/lib/apt/lists/*
 
-# c++ compiler dependencies
-RUN apt install g++ unzip zip -y
-
-# build container dependencies
-RUN apt install curl -y
-
-RUN apt-get install openjdk-11-jdk -y
-
-RUN curl -s -L https://github.com/bazelbuild/bazel/releases/download/4.0.0/bazel-4.0.0-installer-linux-x86_64.sh \
-    -o ./bazel-4.0.0-installer-linux-x86_64.sh && \
-    chmod +x ./bazel-4.0.0-installer-linux-x86_64.sh && \
-    ./bazel-4.0.0-installer-linux-x86_64.sh
+RUN curl -fsSLo /usr/local/bin/bazelisk \
+        "https://github.com/bazelbuild/bazelisk/releases/download/v${BAZELISK_VERSION}/bazelisk-linux-amd64" && \
+    chmod +x /usr/local/bin/bazelisk && \
+    ln -s /usr/local/bin/bazelisk /usr/local/bin/bazel

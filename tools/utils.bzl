@@ -1,5 +1,7 @@
 """Shared utility functions"""
 
+load("@rules_python//python:defs.bzl", "PyInfo")
+
 def get_transitive_files(label):
     """Get transitive sources for python files
 

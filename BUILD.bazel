@@ -1,17 +1,20 @@
-load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+load("@buildifier_prebuilt//:rules.bzl", "buildifier")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 buildifier(
     name = "buildifier",
+    exclude_patterns = [
+        "./bazel-*/*",
+    ],
 )
 
 bzl_lint_test(
-    name = "workspace_bzl_lint_test",
-    data =
-        glob([
+    name = "root_bzl_lint_test",
+    data = glob(
+        [
             "*.bazel",
             "*.bzl",
-        ]) + [
-            "WORKSPACE",
         ],
+        allow_empty = True,
+    ),
 )

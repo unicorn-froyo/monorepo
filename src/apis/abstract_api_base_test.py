@@ -89,7 +89,8 @@ class TestApiBase(TestCase):
         self.assertEqual(
             (
                 "Can't instantiate abstract class "
-                "AbstractApiBase with abstract methods execute"
+                "AbstractApiBase without an implementation for abstract "
+                "method 'execute'"
             ),
             ctx.exception.args[0],
         )
