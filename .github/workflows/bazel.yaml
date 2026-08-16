@@ -1,11 +1,18 @@
 name: Bazel Build & Test
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
     paths-ignore:
       - ".github/Dockerfile"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   bazel_build:
@@ -13,11 +20,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Mount bazel cache
         uses: actions/cache@v6
         with:
-          path: "/home/runner/.cache/bazel"
-          key: bazel
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: ${{ runner.os }}-${{ runner.arch }}-bazel-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'MODULE.bazel.lock', 'third_party/pypi/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-bazel-
 
       - name: Install bazelisk
         run: |
