@@ -1,9 +1,6 @@
 name: Docker Build
 
 on:
-  workflow_dispatch:
-    paths:
-      - ".github/**"
   pull_request:
     branches:
       - main
@@ -15,6 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
       - name: Docker Build
-        run: docker build .github
+        run: docker build .github -f .github/Dockerfile

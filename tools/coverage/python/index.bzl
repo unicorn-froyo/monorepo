@@ -25,17 +25,19 @@ def _py_coverage_test(ctx):
 
     ctx.actions.write(script, script_content, is_executable = True)
 
+    runfiles = ctx.runfiles(
+        files = [script] +
+                ctx.files._python_bin +
+                ctx.files._coverage_py +
+                ctx.files._coverage_config +
+                ctx.files.srcs + ctx.files.deps +
+                ctx.files.data + get_transitive_deps(ctx.attr.deps),
+    )
+    runfiles = runfiles.merge(ctx.attr._py_coverage_bin[DefaultInfo].default_runfiles)
+
     return [DefaultInfo(
         executable = script,
-        runfiles = ctx.runfiles(
-            files = [script] +
-                    ctx.files._py_coverage_bin +
-                    ctx.files._python_bin +
-                    ctx.files._coverage_py +
-                    ctx.files._coverage_config +
-                    ctx.files.srcs + ctx.files.deps +
-                    ctx.files.data + get_transitive_deps(ctx.attr.deps),
-        ),
+        runfiles = runfiles,
     )]
 
 py_coverage_test = rule(

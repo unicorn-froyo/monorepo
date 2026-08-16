@@ -27,7 +27,7 @@ buildifier={buildifier}
 #   name-conventions: we have non-compliant providers. We might change them
 #       eventually, but we'll need to keep the old symbols for compatibility.
 #   print: used for warnings.
-warnings=attr-cfg,attr-license,attr-non-empty,attr-output-default,attr-single-file,build-args-kwargs,constant-glob,ctx-actions,ctx-args,depset-iteration,depset-union,dict-concatenation,duplicated-name,filetype,git-repository,http-archive,integer-division,keyword-positional-params,load,load-on-top,native-android,native-build,native-cc,native-java,native-package,native-proto,native-py,no-effect,output-group,overly-nested-depset,package-name,package-on-top,positional-args,redefined-variable,repository-name,return-value,rule-impl-return,same-origin-load,string-iteration,uninitialized,unreachable,unused-variable
+warnings=attr-cfg,attr-license,attr-non-empty,attr-output-default,attr-single-file,build-args-kwargs,constant-glob,ctx-actions,ctx-args,depset-iteration,depset-union,dict-concatenation,duplicated-name,filetype,git-repository,http-archive,integer-division,keyword-positional-params,load,native-android,native-build,native-package,native-proto,native-py,no-effect,output-group,overly-nested-depset,package-name,package-on-top,positional-args,redefined-variable,repository-name,return-value,rule-impl-return,string-iteration,uninitialized,unreachable,unused-variable
 ok=0
 for file in "${{files[@]}}"; do
     "$buildifier" -mode=check -lint=warn -warnings="$warnings" "$file"
@@ -42,11 +42,12 @@ exit $ok
     )
     ctx.actions.write(script, content, is_executable = True)
 
+    runfiles = ctx.runfiles(files = [script] + files)
+    runfiles = runfiles.merge(ctx.attr._buildifier[DefaultInfo].default_runfiles)
+
     return [DefaultInfo(
         executable = script,
-        default_runfiles = ctx.runfiles(
-            files = [script, ctx.executable._buildifier] + files,
-        ),
+        default_runfiles = runfiles,
     )]
 
 bzl_lint_test = rule(
@@ -56,7 +57,7 @@ bzl_lint_test = rule(
             allow_files = True,
         ),
         "_buildifier": attr.label(
-            default = "@com_github_bazelbuild_buildtools//buildifier",
+            default = "@buildifier_prebuilt//:buildifier",
             executable = True,
             cfg = "exec",
         ),

@@ -1,8 +1,8 @@
 """index.bzl provides the packaging ruleset"""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
-load("//tools:utils.bzl", "get_transitive_deps")
 load("//tools:providers.bzl", "PackageInfo")
+load("//tools:utils.bzl", "get_transitive_deps")
 
 def _package_api(ctx):
     language = None

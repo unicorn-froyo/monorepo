@@ -49,7 +49,7 @@ class TestPackage(TestCase):
         mock_stat.return_value.st_mtime = 1565355651
         Package(args=args).execute()
         zip_mock.assert_called_with("output-file.zip", "w")
-        zip_mock.return_value.__enter__().write.assert_has_calls(
+        zip_mock.return_value.__enter__.return_value.write.assert_has_calls(
             [call("file1"), call("file2")]
         )
 

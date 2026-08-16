@@ -1,30 +1,39 @@
 name: Bazel Build & Test
 
 on:
-  workflow_dispatch:
-    paths-ignore:
-      - ".github/Dockerfile"
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
     paths-ignore:
       - ".github/Dockerfile"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   bazel_build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
+
       - name: Mount bazel cache
-        uses: actions/cache@v1
+        uses: actions/cache@v6
         with:
-          path: "/home/runner/.cache/bazel"
-          key: bazel
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: ${{ runner.os }}-${{ runner.arch }}-bazel-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'MODULE.bazel.lock', 'third_party/pypi/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-bazel-
 
       - name: Install bazelisk
         run: |
-          curl -LO "https://github.com/bazelbuild/bazelisk/releases/download/v1.8.1/bazelisk-linux-amd64"
+          curl -LO "https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-amd64"
           mkdir -p "${GITHUB_WORKSPACE}/bin/"
           mv bazelisk-linux-amd64 "${GITHUB_WORKSPACE}/bin/bazel"
           chmod +x "${GITHUB_WORKSPACE}/bin/bazel"
