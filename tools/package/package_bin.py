@@ -25,12 +25,18 @@ class Package:  # pylint: disable=too-few-public-methods
 
         Raises:
             ValueError: Raises if the first positional argument is empty.
-            NotImplementedError: Raises when not using python.
+            NotImplementedError: Raises for unsupported runtimes.
         """
         if not self.files:
             raise ValueError("No files were supplied")
-        if self.runtime != LambdaRuntimes.PYTHON.value:
-            raise NotImplementedError("Only python is supported at this time")
+        supported_runtimes = {
+            LambdaRuntimes.PYTHON.value,
+            LambdaRuntimes.RUBY.value,
+        }
+        if self.runtime not in supported_runtimes:
+            raise NotImplementedError(
+                "Only python and ruby are supported at this time"
+            )
 
         with ZipFile(self.output_file, "w") as file:
             for src in self.files:
@@ -41,7 +47,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(
         description=dedent(
             """This program is implemented to create a lambda function
-            compatible zipfile. It currently only supports python.
+            compatible zipfile. It supports Python and Ruby.
     """
         ),
         add_help=True,

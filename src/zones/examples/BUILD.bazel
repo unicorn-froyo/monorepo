@@ -1,7 +1,7 @@
 load("//tools/deploy:deploy.bzl", "deployment_zone")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
-package(default_visibility = ["//src/apis/examples:__subpackages__"])
+package(default_visibility = ["//src/apis:__subpackages__"])
 
 bzl_lint_test(
     name = "zones_example_bzl_lint_test",

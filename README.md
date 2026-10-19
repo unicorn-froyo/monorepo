@@ -9,6 +9,13 @@ This template repository implements a polyglot monorepository structure using [B
 1. Builds are hermetic.
 2. Commits are atomic.
 
+## Supported languages
+
+Python and Ruby have hermetic Bazel toolchains. Use `py_*` rules from
+`rules_python` or `rb_library`, `rb_binary`, and `rb_test` from `rules_ruby`.
+The `package_api` rule packages either language for its corresponding AWS
+Lambda runtime and infers the runtime from its source target by default.
+
 ## How-to
 
 ### Install Bazel

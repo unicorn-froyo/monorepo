@@ -1,0 +1,32 @@
+load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/package:index.bzl", "package_api")
+
+bzl_lint_test(
+    name = "get_widgets_example_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+rb_library(
+    name = "get_widgets_example_rb_lib",
+    srcs = [":get_widgets.rb"],
+    deps = ["//src/apis/ruby:api_base_rb_lib"],
+)
+
+rb_test(
+    name = "get_widgets_example_rb_test",
+    srcs = [":get_widgets_test.rb"],
+    args = ["src/apis/examples/ruby/get_widgets_test.rb"],
+    deps = [":get_widgets_example_rb_lib"],
+)
+
+package_api(
+    name = "get_widgets_example_rb_pkg",
+    srcs = [":get_widgets_example_rb_lib"],
+)

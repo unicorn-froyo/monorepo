@@ -5,7 +5,7 @@ import json
 from unittest import TestCase, main
 from unittest.mock import Mock
 
-from src.apis.abstract_api_base import AbstractApiBase
+from src.apis.python.abstract_api_base import AbstractApiBase
 
 
 class TestApiBase(TestCase):

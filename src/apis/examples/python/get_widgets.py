@@ -1,7 +1,7 @@
 """Get Widgets API"""
 from http import HTTPStatus
 
-from src.apis.abstract_api_base import AbstractApiBase
+from src.apis.python.abstract_api_base import AbstractApiBase
 
 
 class GetWidgets(AbstractApiBase):  # pylint: disable = too-few-public-methods

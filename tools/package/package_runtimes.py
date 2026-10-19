@@ -6,6 +6,7 @@ class LambdaRuntimes(Enum):
     """Supported Runtimes"""
 
     PYTHON = "python"
+    RUBY = "ruby"
     NODEJS = "nodejs"
     GOLANG = "go"
 

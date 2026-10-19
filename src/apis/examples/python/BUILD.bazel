@@ -20,9 +20,7 @@ py_binary(
     name = "get_widgets_example_py_lib",
     srcs = [":get_widgets.py"],
     main = ":get_widgets.py",
-    deps = [
-        "//src/apis:api_base_py_lib",
-    ],
+    deps = ["//src/apis/python:api_base_py_lib"],
 )
 
 py_coverage_test(
