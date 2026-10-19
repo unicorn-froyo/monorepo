@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
+require "json"
+require "rack/mock"
 require_relative "get_widgets"
 
-result = handler(event: {}, context: nil)
-expected = {
-  "statusCode" => 202,
-  "headers" => { "Content-Type" => "application/json" },
-  "body" => '""'
-}
-raise "Unexpected response: #{result.inspect}" unless result == expected
+response = Rack::MockRequest.new(APP).get("/widgets", "HTTP_HOST" => "localhost")
+raise "Unexpected status: #{response.status}" unless response.status == 202
+raise "Unexpected response: #{response.body}" unless JSON.parse(response.body) == []

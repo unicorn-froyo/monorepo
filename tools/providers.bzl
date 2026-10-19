@@ -1,10 +1,5 @@
 """Tools Providers"""
 
-PackageInfo = provider(
-    doc = "This provider contains package information",
-    fields = {"language": "The language environment of the package."},
-)
-
 DeploymentZoneInfo = provider(
     doc = "The the template of a code deployment location or zone. This is designed to be an AWS Account.",
     fields = {

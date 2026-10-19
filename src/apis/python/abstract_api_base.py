@@ -1,62 +1,21 @@
-"""Abstract API Base Class for API Deployment Types"""
-import json
+"""FastAPI base class for HTTP APIs."""
 from abc import ABC, abstractmethod
-from http import HTTPStatus
-from typing import Union
+
+from fastapi import FastAPI
 
 
-class AbstractApiBase(ABC):
-    """Api Base"""
+class AbstractApiBase(ABC):  # pylint: disable=too-few-public-methods
+    """Base for APIs served by an ASGI server.
 
-    def __init__(self, *args, **kwargs):
-        """Constructor Method"""
-        super(*args, **kwargs)
+    Subclasses register their routes in :meth:`configure_routes`. The exposed
+    ``app`` is a regular FastAPI application and can be served by Uvicorn or
+    any other ASGI server.
+    """
+
+    def __init__(self, *, title: str, version: str = "1.0.0") -> None:
+        self.app = FastAPI(title=title, version=version)
+        self.configure_routes()
 
     @abstractmethod
-    def execute(self, request: dict) -> dict:
-        """Abstract Execute Method"""
-
-    @staticmethod
-    def response(
-        message: dict,
-        status_code: int = HTTPStatus.OK.value,
-        headers: Union[dict, None] = None,
-    ) -> dict:
-        """Standard response to API Gateway
-
-        Args:
-            message (dict): Response message as a dictionary.
-            status_code (int, optional): Response Http Status Code. Defaults to HTTPStatus.OK.value.
-            headers (Union[dict, None], optional): Response Headers. Defaults to None.
-
-        Returns:
-            dict: AWS API Gateway Response Dictionary
-        """
-        headers = (
-            {"Content-Type": "application/json"}
-            if headers is None
-            else headers
-        )
-        return {
-            "statusCode": status_code,
-            "headers": headers,
-            "body": json.dumps(message),
-        }
-
-    @classmethod
-    def get_aws_lambda_handler(cls, *args, **kwargs):
-        """Wrapper to return the AWS Lambda Handler function
-
-        Returns:
-            dict: Api Response dict
-        """
-        command = cls(*args, **kwargs)
-
-        def handler(event, context):  # pylint: disable = unused-argument
-            # pylint: disable = fixme
-            # TODO: setup request using protobuf
-            # TODO: read secrets
-            # pylint: enable = fixme
-            return command.execute(event)
-
-        return handler
+    def configure_routes(self) -> None:
+        """Register this API's routes on ``self.app``."""

@@ -1,30 +1,21 @@
-"""index.bzl provides the py_coverage_test rule"""
+"""Rules for deploying a containerized API."""
 
-load("//tools:providers.bzl", "DeploymentZoneInfo", "PackageInfo")
+load("//tools:providers.bzl", "DeploymentZoneInfo")
 
 def _deploy_api_impl(ctx):
-    package_path = ctx.files.package[0].short_path
-    language = ctx.attr.package[PackageInfo].language
     account = ctx.attr.deployment_zone[DeploymentZoneInfo].account_id
     regions = ",".join(ctx.attr.deployment_zone[DeploymentZoneInfo].subnet_ids.keys())
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
     script_content = "\n".join([
         "#!/bin/sh",
-        "echo \"The deployment package path is {path}\"".format(path = package_path),
-        "echo \"The deployment package is implemented in {language}\"".format(language = language),
+        "echo \"The deployment image is {image}\"".format(image = ctx.attr.image_name),
         "echo \"The deployment will create infrastructure in account: {account_id}\"".format(account_id = account),
         "echo \"The deployment will create infrastructure in regions: {regions}\"".format(regions = regions),
     ])
 
     ctx.actions.write(script, script_content, is_executable = True)
 
-    return [DefaultInfo(
-        executable = script,
-        runfiles = ctx.runfiles(
-            files = [script] +
-                    ctx.files.package,
-        ),
-    )]
+    return [DefaultInfo(executable = script)]
 
 deploy_api = rule(
     implementation = _deploy_api_impl,
@@ -33,10 +24,8 @@ deploy_api = rule(
             providers = [DeploymentZoneInfo],
             mandatory = True,
         ),
-        "package": attr.label(
-            providers = [PackageInfo],
-            mandatory = True,
-        ),
+        "image": attr.label(mandatory = True),
+        "image_name": attr.string(mandatory = True),
     },
     executable = True,
 )

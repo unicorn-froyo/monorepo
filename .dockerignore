@@ -1,0 +1,6 @@
+.git
+.github
+.ruby-lsp
+bazel-*
+**/__pycache__
+**/*.pyc
