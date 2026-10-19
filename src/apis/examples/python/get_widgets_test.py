@@ -3,7 +3,7 @@ import logging
 import json
 from unittest import TestCase, main
 from unittest.mock import Mock
-from src.apis.examples.get_widgets import handler
+from src.apis.examples.python.get_widgets import handler
 
 
 class TestGetWidgets(TestCase):

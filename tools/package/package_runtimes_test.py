@@ -11,7 +11,7 @@ class TestLambdaRuntimes(TestCase):
         """Test Lambda Runtimes"""
 
         self.assertListEqual(
-            LambdaRuntimes.values(), ["python", "nodejs", "go"]
+            LambdaRuntimes.values(), ["python", "ruby", "nodejs", "go"]
         )
 
 

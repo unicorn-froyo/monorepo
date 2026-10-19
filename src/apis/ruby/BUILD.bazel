@@ -1,0 +1,27 @@
+load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+package(default_visibility = ["//src/apis:__subpackages__"])
+
+bzl_lint_test(
+    name = "api_base_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+rb_library(
+    name = "api_base_rb_lib",
+    srcs = [":abstract_api_base.rb"],
+)
+
+rb_test(
+    name = "api_base_rb_test",
+    srcs = [":abstract_api_base_test.rb"],
+    args = ["src/apis/ruby/abstract_api_base_test.rb"],
+    deps = [":api_base_rb_lib"],
+)

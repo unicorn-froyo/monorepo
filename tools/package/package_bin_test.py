@@ -33,24 +33,31 @@ class TestPackage(TestCase):
         with self.assertRaises(NotImplementedError) as ctx:
             Package(args=args).execute()
         self.assertEqual(
-            ctx.exception.args[0], "Only python is supported at this time"
+            ctx.exception.args[0],
+            "Only python and ruby are supported at this time",
         )
 
     @patch("os.stat")
     @patch("tools.package.package_bin.ZipFile")
     def test_success(self, zip_mock, mock_stat):
-        """Test raises NotImplementedError"""
-        args = self.Namespace()
-        args.files = "file1,file2"
-        args.runtime = "python"
-        args.output_file = "output-file.zip"
+        """Test packages files for every supported runtime."""
         mock_stat.return_value.st_size = 35
         mock_stat.return_value.st_mode = 15
         mock_stat.return_value.st_mtime = 1565355651
-        Package(args=args).execute()
-        zip_mock.assert_called_with("output-file.zip", "w")
+
+        for runtime in ("python", "ruby"):
+            with self.subTest(runtime=runtime):
+                args = self.Namespace()
+                args.files = "file1,file2"
+                args.runtime = runtime
+                args.output_file = f"{runtime}-output-file.zip"
+                Package(args=args).execute()
+                zip_mock.assert_called_with(
+                    f"{runtime}-output-file.zip", "w"
+                )
+
         zip_mock.return_value.__enter__.return_value.write.assert_has_calls(
-            [call("file1"), call("file2")]
+            [call("file1"), call("file2")] * 2
         )
 
 

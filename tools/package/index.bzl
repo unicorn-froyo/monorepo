@@ -4,14 +4,43 @@ load("@rules_python//python:defs.bzl", "PyInfo")
 load("//tools:providers.bzl", "PackageInfo")
 load("//tools:utils.bzl", "get_transitive_deps")
 
+_SUPPORTED_RUNTIMES = ["python", "ruby"]
+
+def _runtime_and_sources(ctx):
+    """Determine the package runtime and collect its transitive sources."""
+    runtime = ctx.attr.runtime
+    if runtime == "auto":
+        if all([PyInfo in target for target in ctx.attr.srcs]):
+            runtime = "python"
+        elif any([
+            source.extension == "rb"
+            for target in ctx.attr.srcs
+            for source in target.files.to_list()
+        ]):
+            runtime = "ruby"
+        else:
+            fail("Unable to determine package runtime; set runtime explicitly")
+
+    if runtime == "python":
+        for target in ctx.attr.srcs:
+            if PyInfo not in target:
+                fail("Python package sources must provide PyInfo")
+        return runtime, get_transitive_deps(ctx.attr.srcs)
+
+    # Ruby rules expose their transitive sources through DefaultInfo. Keeping
+    # this rule independent of rules_ruby's private provider API also allows
+    # filegroups containing Ruby sources to be packaged.
+    return runtime, ctx.files.srcs
+
 def _package_api(ctx):
-    language = None
-    if PyInfo in ctx.attr.srcs[0]:
-        language = "python"
+    if not ctx.attr.srcs:
+        fail("At least one source target is required")
+
+    language, source_files = _runtime_and_sources(ctx)
     output_file = ctx.actions.declare_file(ctx.attr.name + ".zip")
-    files = ctx.files._packaging_bin + ctx.files._python_bin + ctx.files.srcs + ctx.files.data + get_transitive_deps(ctx.attr.srcs)
+    files = ctx.files._packaging_bin + ctx.files._python_bin + source_files + ctx.files.data
     args = ctx.actions.args()
-    args.add_joined([s.path for s in get_transitive_deps(ctx.attr.srcs)], join_with = ",")
+    args.add_joined([source.path for source in source_files], join_with = ",")
     args.add("--output-file", output_file.path)
     args.add("--runtime", language)
     ctx.actions.run(
@@ -32,11 +61,14 @@ def _package_api(ctx):
 package_api = rule(
     implementation = _package_api,
     attrs = {
-        "srcs": attr.label_list(
-            providers = [PyInfo],
-        ),
+        "srcs": attr.label_list(),
         "data": attr.label_list(
             allow_files = True,
+        ),
+        "runtime": attr.string(
+            default = "auto",
+            doc = "Runtime to package. By default it is inferred from the sources.",
+            values = ["auto"] + _SUPPORTED_RUNTIMES,
         ),
         "_packaging_bin": attr.label(
             default = "//tools/package:package_api_bin",
