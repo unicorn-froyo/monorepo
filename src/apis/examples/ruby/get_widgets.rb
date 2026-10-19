@@ -2,13 +2,26 @@
 
 require_relative "../../ruby/abstract_api_base"
 
-# Example Ruby API implementation.
-class GetWidgetsRuby < AbstractApiBase
-  def execute(_request)
-    response("", status_code: 202)
+ENV["SECRET_KEY_BASE"] ||= "development-only-secret-key-base"
+
+# Controller for widget resources.
+class WidgetsController < AbstractApiBase
+  def index
+    render json: [], status: :accepted
   end
 end
 
-def handler(event:, context:)
-  GetWidgetsRuby.aws_lambda_handler.call(event: event, context: context)
+# Example Rails API application.
+class GetWidgetsRuby < Rails::Application
+  config.api_only = true
+  config.eager_load = false
+  config.hosts.clear
+  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")
 end
+
+GetWidgetsRuby.initialize!
+GetWidgetsRuby.routes.draw do
+  get "/widgets", to: "widgets#index"
+end
+
+APP = GetWidgetsRuby

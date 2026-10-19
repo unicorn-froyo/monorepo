@@ -36,6 +36,19 @@ py_library(
 )
 
 py_library(
+    name = "fastapi",
+    deps = [
+        requirement("fastapi"),
+        requirement("httpx"),
+    ],
+)
+
+py_library(
+    name = "uvicorn",
+    deps = [requirement("uvicorn")],
+)
+
+py_library(
     name = "pylint",
     deps = [
         ":astroid",

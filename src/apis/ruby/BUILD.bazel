@@ -14,14 +14,23 @@ bzl_lint_test(
     ),
 )
 
+filegroup(
+    name = "docker_srcs",
+    srcs = ["abstract_api_base.rb"],
+)
+
 rb_library(
     name = "api_base_rb_lib",
     srcs = [":abstract_api_base.rb"],
+    deps = ["@bundle"],
 )
 
 rb_test(
     name = "api_base_rb_test",
     srcs = [":abstract_api_base_test.rb"],
     args = ["src/apis/ruby/abstract_api_base_test.rb"],
-    deps = [":api_base_rb_lib"],
+    deps = [
+        ":api_base_rb_lib",
+        "@bundle",
+    ],
 )

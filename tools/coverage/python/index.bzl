@@ -7,10 +7,11 @@ def _py_coverage_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
     test_files = " ".join([s.short_path for s in ctx.files.srcs])
 
-    python_path = ":".join([p.short_path for p in ctx.files._py_coverage_bin] + [s.short_path for s in ctx.files.srcs] + [s.short_path for s in ctx.files.deps])
+    imports = depset(transitive = [dep[PyInfo].imports for dep in ctx.attr.deps]).to_list()
+    python_path = ":".join(["$RUNFILES_DIR/_main"] + ["$RUNFILES_DIR/" + path for path in imports])
     script_content = "\n".join([
         "#!/bin/sh",
-        "PYTHONPATH={python_path}".format(python_path = python_path),
+        "export PYTHONPATH={python_path}".format(python_path = python_path),
         "set -e",
         "{coverage_bin} run --rcfile={config_path} -m unittest {files}".format(
             coverage_bin = ctx.executable._py_coverage_bin.short_path,
@@ -34,6 +35,8 @@ def _py_coverage_test(ctx):
                 ctx.files.data + get_transitive_deps(ctx.attr.deps),
     )
     runfiles = runfiles.merge(ctx.attr._py_coverage_bin[DefaultInfo].default_runfiles)
+    for dep in ctx.attr.deps:
+        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
 
     return [DefaultInfo(
         executable = script,

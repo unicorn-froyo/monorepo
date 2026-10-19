@@ -1,41 +1,24 @@
-"""Get Widgets API"""
+"""Example FastAPI widgets service."""
 from http import HTTPStatus
+
+from fastapi import Response
 
 from src.apis.python.abstract_api_base import AbstractApiBase
 
 
-class GetWidgets(AbstractApiBase):  # pylint: disable = too-few-public-methods
-    """Test Endpoint"""
+class GetWidgets(AbstractApiBase):  # pylint: disable=too-few-public-methods
+    """Widgets HTTP API."""
 
-    def __init__(
-        self, *args, **kwargs
-    ):  # pylint: disable = useless-super-delegation
-        """Constructor Method"""
-        super().__init__(*args, **kwargs)
+    def __init__(self) -> None:
+        super().__init__(title="Widgets API")
 
-    def execute(
-        self, request: dict  # pylint: disable = unused-argument
-    ) -> dict:
-        """Entrypoint into Lambda Function
+    def configure_routes(self) -> None:
+        """Register widget endpoints."""
 
-        Args:
-            request (dict): Api Gateway Event
-
-        Returns:
-            dict: API Gateway compatible response
-        """
-
-        return self.response(message="", status_code=HTTPStatus.ACCEPTED.value)
+        @self.app.get("/widgets", status_code=HTTPStatus.ACCEPTED.value)
+        async def get_widgets(response: Response) -> list[object]:
+            response.status_code = HTTPStatus.ACCEPTED.value
+            return []
 
 
-def handler(event: dict, context: object) -> dict:
-    """API handler function
-
-    Args:
-        event (dict): API Gateway Event
-        context (object): AWS Lambda Context Object
-
-    Returns:
-        dict: API Gateway compatible response
-    """
-    return GetWidgets().get_aws_lambda_handler()(event=event, context=context)
+app = GetWidgets().app

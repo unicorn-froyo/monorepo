@@ -16,15 +16,24 @@ bzl_lint_test(
     ),
 )
 
+filegroup(
+    name = "docker_srcs",
+    srcs = ["abstract_api_base.py"],
+)
+
 py_library(
     name = "api_base_py_lib",
     srcs = [":abstract_api_base.py"],
+    deps = ["//third_party/pypi:fastapi"],
 )
 
 py_coverage_test(
     name = "api_base_py_coverage_test",
     srcs = [":abstract_api_base_test.py"],
-    deps = [":api_base_py_lib"],
+    deps = [
+        ":api_base_py_lib",
+        "//third_party/pypi:fastapi",
+    ],
 )
 
 py_lint_test(

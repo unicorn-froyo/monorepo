@@ -1,6 +1,8 @@
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@buildx//:defs.bzl", "buildx", "context")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/package:index.bzl", "package_api")
 
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
@@ -16,17 +18,60 @@ bzl_lint_test(
 rb_library(
     name = "get_widgets_example_rb_lib",
     srcs = [":get_widgets.rb"],
-    deps = ["//src/apis/ruby:api_base_rb_lib"],
+    deps = [
+        "//src/apis/ruby:api_base_rb_lib",
+        "@bundle",
+    ],
 )
 
 rb_test(
     name = "get_widgets_example_rb_test",
     srcs = [":get_widgets_test.rb"],
     args = ["src/apis/examples/ruby/get_widgets_test.rb"],
-    deps = [":get_widgets_example_rb_lib"],
+    deps = [
+        ":get_widgets_example_rb_lib",
+        "@bundle",
+    ],
 )
 
-package_api(
-    name = "get_widgets_example_rb_pkg",
-    srcs = [":get_widgets_example_rb_lib"],
+copy_to_directory(
+    name = "docker_context",
+    srcs = [
+        ":config.ru",
+        ":get_widgets.rb",
+        "//src/apis/ruby:docker_srcs",
+        "//third_party/ruby:Gemfile",
+        "//third_party/ruby:Gemfile.lock",
+    ],
+    root_paths = [],
 )
+
+buildx(
+    name = "get_widgets_example_rootfs",
+    build_context = [
+        context.oci_layout("ruby:3.4-slim", "@ruby_base"),
+        context.sources(
+            "app_context",
+            [":docker_context"],
+        ),
+    ],
+    dockerfile = "Dockerfile",
+)
+
+oci_image(
+    name = "get_widgets_example_oci",
+    base = ":get_widgets_example_rootfs",
+    tags = ["manual"],
+)
+
+oci_load(
+    name = "get_widgets_example_image",
+    image = ":get_widgets_example_oci",
+    repo_tags = ["get-widgets-ruby:latest"],
+    tags = ["manual"],
+)
+
+exports_files([
+    "Dockerfile",
+    "config.ru",
+])
