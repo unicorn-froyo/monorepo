@@ -240,7 +240,8 @@
     "https://bcr.bazel.build/modules/rules_oci/2.3.0/source.json": "47710c28446211b5e61a24015a4669c50c6862d5f91e6bdbc710de8d750cf613",
     "https://bcr.bazel.build/modules/rules_pkg/0.7.0/MODULE.bazel": "df99f03fc7934a4737122518bb87e667e62d780b610910f0447665a7e2be62dc",
     "https://bcr.bazel.build/modules/rules_pkg/1.0.1/MODULE.bazel": "5b1df97dbc29623bccdf2b0dcd0f5cb08e2f2c9050aab1092fd39a41e82686ff",
-    "https://bcr.bazel.build/modules/rules_pkg/1.0.1/source.json": "bd82e5d7b9ce2d31e380dd9f50c111d678c3bdaca190cb76b0e1c71b05e1ba8a",
+    "https://bcr.bazel.build/modules/rules_pkg/1.3.0/MODULE.bazel": "ae0bdefbacc990c91f843206c90cf0f4be620639a5bf22119043599ba86d51a3",
+    "https://bcr.bazel.build/modules/rules_pkg/1.3.0/source.json": "58ae84c545141762f7c434c0ce78bfb55ef0be08d84863e7f0503fff135fe4e2",
     "https://bcr.bazel.build/modules/rules_proto/4.0.0/MODULE.bazel": "a7a7b6ce9bee418c1a760b3d84f83a299ad6952f9903c67f19e4edd964894e06",
     "https://bcr.bazel.build/modules/rules_proto/5.3.0-21.7/MODULE.bazel": "e8dff86b0971688790ae75528fe1813f71809b5afd57facb44dad9e8eca631b7",
     "https://bcr.bazel.build/modules/rules_proto/6.0.0-rc1/MODULE.bazel": "1e5b502e2e1a9e825eef74476a5a1ee524a92297085015a052510b09a1a09483",
@@ -309,78 +310,6 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//tools/container:buildx.bzl%buildx": {
-      "general": {
-        "bzlTransitiveDigest": "xR4scYIVG6BNgWXZMg9sKPGEAEK+XXmFwJMLEOYLvsw=",
-        "usagesDigest": "3pTgupz+TPzVscBlsl4YK9oRwhaobo8x/5QBy5f5xkQ=",
-        "recordedInputs": [
-          "REPO_MAPPING:,aspect_bazel_lib aspect_bazel_lib+",
-          "REPO_MAPPING:,bazel_tools bazel_tools"
-        ],
-        "generatedRepoSpecs": {
-          "buildx_linux-arm64": {
-            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_file",
-            "attributes": {
-              "urls": [
-                "https://github.com/docker/buildx/releases/download/v0.22.0/buildx-v0.22.0.linux-arm64"
-              ],
-              "sha256": "6e9e455b5ec1c7ac708f2640a86c5cecce38c72e48acff6cb219dfdfa2dda781",
-              "executable": true
-            }
-          },
-          "buildx_linux-amd64": {
-            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_file",
-            "attributes": {
-              "urls": [
-                "https://github.com/docker/buildx/releases/download/v0.22.0/buildx-v0.22.0.linux-amd64"
-              ],
-              "sha256": "805195386fba0cea5a1487cf0d47da82a145ea0a792bd3fb477583e2dbcdcc2f",
-              "executable": true
-            }
-          },
-          "buildx_darwin-arm64": {
-            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_file",
-            "attributes": {
-              "urls": [
-                "https://github.com/docker/buildx/releases/download/v0.22.0/buildx-v0.22.0.darwin-arm64"
-              ],
-              "sha256": "5898c338abb1f673107bc087997dc3cb63b4ea66d304ce4223472f57bd8d616e",
-              "executable": true
-            }
-          },
-          "buildx_darwin-amd64": {
-            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_file",
-            "attributes": {
-              "urls": [
-                "https://github.com/docker/buildx/releases/download/v0.22.0/buildx-v0.22.0.darwin-amd64"
-              ],
-              "sha256": "5221ad6b8acd2283f8fbbeebc79ae4b657e83519ca1c1e4cfbb9405230b3d933",
-              "executable": true
-            }
-          },
-          "buildx": {
-            "repoRuleId": "@@//tools/container:buildx.bzl%configure_buildx",
-            "attributes": {
-              "buildx": "@@+buildx+buildx_darwin-arm64//file:downloaded",
-              "buildx_platforms": {
-                "@@+buildx+buildx_linux-amd64//file:file": "@bazel_tools//src/conditions:linux_x86_64",
-                "@@+buildx+buildx_linux-arm64//file:file": "@bazel_tools//src/conditions:linux_aarch64",
-                "@@+buildx+buildx_darwin-amd64//file:file": "@bazel_tools//src/conditions:darwin_x86_64",
-                "@@+buildx+buildx_darwin-arm64//file:file": "@bazel_tools//src/conditions:darwin_arm64"
-              }
-            }
-          }
-        },
-        "moduleExtensionMetadata": {
-          "explicitRootModuleDirectDeps": [
-            "buildx"
-          ],
-          "explicitRootModuleDirectDevDeps": [],
-          "useAllRepos": "NO",
-          "reproducible": false
-        }
-      }
-    },
     "@@cgrindel_bazel_starlib+//tools/git:extensions.bzl%local_git_ext": {
       "general": {
         "bzlTransitiveDigest": "Q/NQyKFI2DljjsevKbLpWlOrT/bOsP3m/A8uvcXQb40=",

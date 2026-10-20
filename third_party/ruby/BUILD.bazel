@@ -1,4 +1,16 @@
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
 package(default_visibility = ["//visibility:public"])
+
+pkg_tar(
+    name = "gemfile_layer",
+    srcs = [
+        "Gemfile",
+        "Gemfile.lock",
+    ],
+    package_dir = "/app/third_party/ruby",
+    strip_prefix = ".",
+)
 
 exports_files([
     "Gemfile",

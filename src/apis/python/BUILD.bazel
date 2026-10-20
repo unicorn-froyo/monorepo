@@ -16,11 +16,6 @@ bzl_lint_test(
     ),
 )
 
-filegroup(
-    name = "docker_srcs",
-    srcs = ["abstract_api_base.py"],
-)
-
 py_library(
     name = "api_base_py_lib",
     srcs = [":abstract_api_base.py"],
