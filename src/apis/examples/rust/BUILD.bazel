@@ -1,0 +1,96 @@
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "get_widgets_example_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+rust_library(
+    name = "get_widgets_example_rs_lib",
+    srcs = ["get_widgets.rs"],
+    crate_name = "get_widgets",
+    edition = "2021",
+    deps = ["//src/apis/rust:api_base_rs_lib"],
+)
+
+rust_binary(
+    name = "server",
+    srcs = ["server.rs"],
+    edition = "2021",
+    deps = [":get_widgets_example_rs_lib"],
+)
+
+rust_test(
+    name = "get_widgets_example_rs_test",
+    srcs = ["get_widgets_test.rs"],
+    edition = "2021",
+    deps = [":get_widgets_example_rs_lib"],
+)
+
+pkg_tar(
+    name = "application_layer",
+    srcs = [
+        "get_widgets.rs",
+        "server.rs",
+        "server.sh",
+    ],
+    package_dir = "/app",
+    strip_prefix = ".",
+)
+
+oci_image(
+    name = "get_widgets_example_oci",
+    base = select({
+        "@platforms//cpu:arm64": "@rust_base_linux_arm64_v8",
+        "@platforms//cpu:x86_64": "@rust_base_linux_amd64",
+    }),
+    entrypoint = [
+        "/bin/sh",
+        "/app/server.sh",
+    ],
+    tags = ["manual"],
+    tars = [
+        "//src/apis/rust:api_base_layer",
+        ":application_layer",
+    ],
+    workdir = "/app",
+)
+
+oci_load(
+    name = "get_widgets_example_image",
+    image = ":get_widgets_example_oci",
+    repo_tags = ["get-widgets-rust:latest"],
+    tags = ["manual"],
+)
+
+deploy_api(
+    name = "get-widgets-qa",
+    deployment_zone = "//src/zones/examples:example_qa",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-rust:latest",
+    tags = [
+        "manual",
+        "qa",
+    ],
+)
+
+deploy_api(
+    name = "get-widgets-prod",
+    deployment_zone = "//src/zones/examples:example_prod",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-rust:latest",
+    tags = [
+        "manual",
+        "prod",
+    ],
+)
