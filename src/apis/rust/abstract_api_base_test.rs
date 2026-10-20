@@ -1,20 +1,12 @@
-use api_base::{Api, Response};
+use axum::{body::Body, http::Request};
+use tower::ServiceExt;
 
-fn health() -> Response {
-    Response::json(202, r#"{"status":"ok"}"#)
-}
+#[tokio::test]
+async fn creates_an_empty_router() {
+    let response = api_base::new()
+        .oneshot(Request::builder().uri("/missing").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
 
-#[test]
-fn dispatches_registered_routes() {
-    let mut api = Api::new();
-    api.handle("GET", "/health", health);
-
-    assert_eq!(api.dispatch("GET", "/health"), health());
-}
-
-#[test]
-fn returns_not_found_for_unknown_routes() {
-    let api = Api::new();
-
-    assert_eq!(api.dispatch("GET", "/missing").status, 404);
+    assert_eq!(response.status(), 404);
 }

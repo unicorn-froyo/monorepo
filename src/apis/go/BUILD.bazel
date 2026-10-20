@@ -17,10 +17,12 @@ go_library(
     srcs = ["abstract_api_base.go"],
     importpath = "github.com/unicorn-froyo/monorepo/src/apis/go",
     visibility = ["//visibility:public"],
+    deps = ["@com_github_gin_gonic_gin//:gin"],
 )
 
 go_test(
     name = "api_base_go_test",
     srcs = ["abstract_api_base_test.go"],
     embed = [":api_base_go_lib"],
+    deps = ["@com_github_gin_gonic_gin//:gin"],
 )

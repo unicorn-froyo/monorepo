@@ -4,6 +4,8 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
+exports_files(["Cargo.toml"])
+
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
     data = glob(
@@ -20,31 +22,44 @@ rust_library(
     srcs = ["get_widgets.rs"],
     crate_name = "get_widgets",
     edition = "2021",
-    deps = ["//src/apis/rust:api_base_rs_lib"],
+    deps = [
+        "//src/apis/rust:api_base_rs_lib",
+        "@rust_crates//:axum",
+    ],
 )
 
 rust_binary(
     name = "server",
     srcs = ["server.rs"],
     edition = "2021",
-    deps = [":get_widgets_example_rs_lib"],
+    deps = [
+        ":get_widgets_example_rs_lib",
+        "@rust_crates//:axum",
+        "@rust_crates//:tokio",
+    ],
 )
 
 rust_test(
     name = "get_widgets_example_rs_test",
     srcs = ["get_widgets_test.rs"],
     edition = "2021",
-    deps = [":get_widgets_example_rs_lib"],
+    deps = [
+        ":get_widgets_example_rs_lib",
+        "@rust_crates//:axum",
+        "@rust_crates//:tokio",
+        "@rust_crates//:tower",
+    ],
 )
 
 pkg_tar(
     name = "application_layer",
     srcs = [
+        "Cargo.toml",
         "get_widgets.rs",
         "server.rs",
         "server.sh",
     ],
-    package_dir = "/app",
+    package_dir = "/app/src/apis/examples/rust",
     strip_prefix = ".",
 )
 
@@ -56,14 +71,15 @@ oci_image(
     }),
     entrypoint = [
         "/bin/sh",
-        "/app/server.sh",
+        "/app/src/apis/examples/rust/server.sh",
     ],
     tags = ["manual"],
     tars = [
         "//src/apis/rust:api_base_layer",
+        "//third_party/rust:cargo_lock_layer",
         ":application_layer",
     ],
-    workdir = "/app",
+    workdir = "/app/src/apis/examples/rust",
 )
 
 oci_load(

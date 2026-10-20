@@ -24,7 +24,10 @@ go_library(
     ],
     importpath = "github.com/unicorn-froyo/monorepo/src/apis/examples/go",
     visibility = ["//visibility:private"],
-    deps = ["//src/apis/go:api_base_go_lib"],
+    deps = [
+        "//src/apis/go:api_base_go_lib",
+        "@com_github_gin_gonic_gin//:gin",
+    ],
 )
 
 go_binary(
@@ -36,6 +39,7 @@ go_test(
     name = "get_widgets_example_go_test",
     srcs = ["get_widgets_test.go"],
     embed = [":get_widgets_example_go_lib"],
+    deps = ["@com_github_gin_gonic_gin//:gin"],
 )
 
 platform(
@@ -77,6 +81,7 @@ oci_image(
         "@platforms//cpu:x86_64": "amd64",
     }),
     entrypoint = ["/app/server"],
+    env = {"GIN_MODE": "release"},
     os = "linux",
     tags = ["manual"],
     tars = [":application_layer"],

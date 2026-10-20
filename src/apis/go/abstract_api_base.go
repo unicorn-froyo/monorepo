@@ -1,24 +1,28 @@
 // Package api provides the shared HTTP API foundation.
 package api
 
-import "net/http"
+import (
+	"net/http"
 
-// API owns the request multiplexer used by an HTTP service.
+	"github.com/gin-gonic/gin"
+)
+
+// API owns the Gin engine used by an HTTP service.
 type API struct {
-	mux *http.ServeMux
+	engine *gin.Engine
 }
 
 // New creates an API with an empty route table.
 func New() *API {
-	return &API{mux: http.NewServeMux()}
+	return &API{engine: gin.New()}
 }
 
 // Handle registers a handler for an HTTP method and path.
-func (a *API) Handle(method, path string, handler http.HandlerFunc) {
-	a.mux.HandleFunc(method+" "+path, handler)
+func (a *API) Handle(method, path string, handler gin.HandlerFunc) {
+	a.engine.Handle(method, path, handler)
 }
 
 // Handler returns the API's HTTP handler.
 func (a *API) Handler() http.Handler {
-	return a.mux
+	return a.engine
 }

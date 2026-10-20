@@ -4,12 +4,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestAPIRegistersRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	service := New()
-	service.Handle(http.MethodGet, "/health", func(writer http.ResponseWriter, _ *http.Request) {
-		writer.WriteHeader(http.StatusNoContent)
+	service.Handle(http.MethodGet, "/health", func(context *gin.Context) {
+		context.Status(http.StatusNoContent)
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)

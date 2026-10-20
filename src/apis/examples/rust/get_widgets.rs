@@ -1,11 +1,9 @@
-use api_base::{Api, Response};
+use axum::{http::StatusCode, routing::get, Json, Router};
 
-fn get_widgets() -> Response {
-    Response::json(202, "[]")
+async fn get_widgets() -> (StatusCode, Json<Vec<String>>) {
+    (StatusCode::ACCEPTED, Json(Vec::new()))
 }
 
-pub fn build_api() -> Api {
-    let mut api = Api::new();
-    api.handle("GET", "/widgets", get_widgets);
-    api
+pub fn build_api() -> Router {
+    api_base::new().route("/widgets", get(get_widgets))
 }

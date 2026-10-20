@@ -14,8 +14,8 @@ This template repository implements a polyglot monorepository structure using [B
 
 Python APIs use [FastAPI](https://fastapi.tiangolo.com/) and expose an ASGI
 application. Ruby APIs use [Rails](https://rubyonrails.org/) in API-only mode and
-expose a Rack application. Go APIs use the standard `net/http` package. Rust APIs
-use the shared HTTP routing and server library under `src/apis/rust`.
+expose a Rack application. Go APIs use [Gin](https://gin-gonic.com/), and Rust
+APIs use [Axum](https://github.com/tokio-rs/axum).
 
 APIs are distributed as OCI-compatible images composed from Bazel-built layers
 with `rules_oci`. Image targets are tagged `manual`, keeping image loading out of
@@ -51,9 +51,9 @@ All examples serve `GET /widgets` on port 8080.
 
 Go, Python, Ruby, and Rust have hermetic Bazel toolchains. Use `go_*` rules from
 `rules_go`, `py_*` rules from `rules_python`, `rb_*` rules from `rules_ruby`, and
-`rust_*` rules from `rules_rust`. Python dependencies are locked in
-`third_party/pypi/requirements.txt`; Ruby dependencies are locked in
-`third_party/ruby/Gemfile.lock`.
+`rust_*` rules from `rules_rust`. Go dependencies are locked in `go.sum`,
+Python dependencies in `third_party/pypi/requirements.txt`, Ruby dependencies in
+`third_party/ruby/Gemfile.lock`, and Rust dependencies under `third_party/rust`.
 
 ## How-to
 
