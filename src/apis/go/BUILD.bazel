@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "api_base_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+go_library(
+    name = "api_base_go_lib",
+    srcs = ["abstract_api_base.go"],
+    importpath = "github.com/unicorn-froyo/monorepo/src/apis/go",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "api_base_go_test",
+    srcs = ["abstract_api_base_test.go"],
+    embed = [":api_base_go_lib"],
+)
