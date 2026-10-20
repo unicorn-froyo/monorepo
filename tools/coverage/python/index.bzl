@@ -28,7 +28,6 @@ def _py_coverage_test(ctx):
 
     runfiles = ctx.runfiles(
         files = [script] +
-                ctx.files._python_bin +
                 ctx.files._coverage_py +
                 ctx.files._coverage_config +
                 ctx.files.srcs + ctx.files.deps +
@@ -60,12 +59,6 @@ py_coverage_test = rule(
             default = "//tools/coverage/python:coverage_bin",
             executable = True,
             cfg = "exec",
-        ),
-        "_python_bin": attr.label(
-            default = "@python_interpreter//:python_bin",
-            executable = True,
-            cfg = "exec",
-            allow_files = True,
         ),
         "_coverage_py": attr.label(
             default = "//third_party/pypi:coverage",

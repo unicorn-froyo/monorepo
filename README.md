@@ -16,9 +16,9 @@ Python APIs use [FastAPI](https://fastapi.tiangolo.com/) and expose an ASGI
 application. Ruby APIs use [Rails](https://rubyonrails.org/) in API-only mode and
 expose a Rack application.
 
-APIs are distributed as OCI-compatible images built with `rules_oci`. Each
-deployable API owns its Dockerfile. Image targets are tagged `manual`, keeping
-container-daemon access out of normal `bazelisk build //...` operations.
+APIs are distributed as OCI-compatible images composed from Bazel-built layers
+with `rules_oci`. Image targets are tagged `manual`, keeping image loading out of
+normal `bazelisk build //...` operations.
 
 Build the examples from the repository root:
 

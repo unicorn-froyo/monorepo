@@ -23,7 +23,7 @@ def _py_lint_test(ctx):
     ctx.actions.write(script, script_content, is_executable = True)
 
     runfiles = ctx.runfiles(
-        files = [script] + ctx.files._python_bin + ctx.files._pylint_config +
+        files = [script] + ctx.files._pylint_config +
                 ctx.files.srcs + ctx.files.deps + ctx.files.data +
                 get_transitive_files(ctx.attr._pylint_py),
     )
@@ -51,12 +51,6 @@ py_lint_test = rule(
             default = "//tools/lint/python:pylint_bin",
             executable = True,
             cfg = "exec",
-        ),
-        "_python_bin": attr.label(
-            default = "@python_interpreter//:python_bin",
-            executable = True,
-            cfg = "exec",
-            allow_files = True,
         ),
         "_pylint_py": attr.label(
             default = "//third_party/pypi:pylint",
