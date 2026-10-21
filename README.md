@@ -52,18 +52,8 @@ docker run --rm -p 8080:8080 get-widgets-typescript:latest
 
 All examples serve `GET /widgets` on port 8080.
 
-API responses include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
-`Referrer-Policy: no-referrer`, and a restrictive `Permissions-Policy`. HTTPS
-responses also include `Strict-Transport-Security` (one year, without
-`includeSubDomains` or preload). Python APIs using `AbstractApiBase` install the
-middleware automatically. Rails APIs using `AbstractApiBase` install the Rack
-middleware automatically via a Railtie. Go APIs created with `api.New()` and
-TypeScript APIs extending `AbstractApiBase` also install hardening automatically;
-Express disables `X-Powered-By`. Rust APIs register routes with `api_base::new()`
-and finish with `.into_router()` to apply headers to routes and fallbacks.
-If TLS terminates upstream, configure the proxy and application to report the
-original HTTPS scheme; the Rust middleware checks the request URI scheme and
-requires the server to preserve it for HSTS.
+All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
+including consistent security headers on HTTP responses and HTTPS-only HSTS.
 
 ## Supported languages
 
