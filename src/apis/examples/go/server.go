@@ -5,10 +5,13 @@ import (
 	"net/http"
 )
 
-func main() {
-	server := &http.Server{
+func newServer() *http.Server {
+	return &http.Server{
 		Addr:    ":8080",
 		Handler: newHandler(),
 	}
-	log.Fatal(server.ListenAndServe())
+}
+
+func main() {
+	log.Fatal(newServer().ListenAndServe())
 }

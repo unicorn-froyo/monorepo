@@ -18,6 +18,7 @@ end
 SimpleCov.formatter = SimpleCov::Formatter::LcovFormatter
 SimpleCov.command_name ENV.fetch("TEST_TARGET", "ruby_tests")
 SimpleCov.start do
+  minimum_coverage line: Float(ENV.fetch("MINIMUM_LINE_COVERAGE"))
   root source_root
   coverage_dir report_dir
   add_filter "/external/"

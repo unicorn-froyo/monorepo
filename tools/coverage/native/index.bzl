@@ -1,5 +1,7 @@
 """Shared support for coverage that runs under ordinary `bazel test`."""
 
+load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
+
 def _instrument_impl(_settings, _attr):
     return {
         "//command_line_option:collect_code_coverage": True,
@@ -34,7 +36,7 @@ def coverage_impl(ctx, language, llvm_cov = None, llvm_profdata = None, tool_fil
     target = ctx.attr.target[0]
     executable = target[DefaultInfo].files_to_run.executable
     environment = target[RunEnvironmentInfo].environment if RunEnvironmentInfo in target else {}
-    args = [language, executable.short_path, json.encode(environment)]
+    args = [language, executable.short_path, json.encode(environment), str(MINIMUM_LINE_COVERAGE)]
     files = [executable]
     if llvm_cov:
         args += [llvm_cov.short_path, llvm_profdata.short_path]

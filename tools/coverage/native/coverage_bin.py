@@ -31,8 +31,20 @@ def go_report(profile: Path, module: str = "") -> str:
     return "\n".join(records) + "\n"
 
 
+def enforce_threshold(report: str, minimum: float) -> None:
+    """Enforce aggregate line coverage without rounding up near the boundary."""
+    found = sum(int(line[3:]) for line in report.splitlines() if line.startswith("LF:"))
+    hit = sum(int(line[3:]) for line in report.splitlines() if line.startswith("LH:"))
+    if found <= 0 or hit < 0 or hit > found:
+        raise RuntimeError("Coverage report has invalid or empty line totals")
+    percentage = 100 * hit / found
+    print(f"Line coverage: {hit}/{found} ({percentage:.2f}%); required: {minimum:g}%")
+    if hit * 100 < minimum * found:
+        raise RuntimeError(f"Line coverage {percentage:.2f}% is below {minimum:g}%")
+
+
 def main() -> None:
-    language, binary, encoded_env, *tools = sys.argv[1:]
+    language, binary, encoded_env, minimum, *tools = sys.argv[1:]
     binary = str(Path(binary).absolute())
     output = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"])
     output.mkdir(parents=True, exist_ok=True)
@@ -65,6 +77,7 @@ def main() -> None:
         raise RuntimeError("Coverage report contains no API source files")
     (output / "lcov.info").write_text(report)
     print(f"{language} LCOV coverage saved to {output / 'lcov.info'}")
+    enforce_threshold(report, float(minimum))
 
 
 if __name__ == "__main__":

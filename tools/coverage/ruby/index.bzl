@@ -1,6 +1,7 @@
 """Ruby test coverage with SimpleCov and LCOV reports."""
 
 load("@rules_ruby//ruby:defs.bzl", "rb_test")
+load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
 
 def rb_coverage_test(name, srcs, deps = []):
     """Run one Ruby test script with coverage started before application imports."""
@@ -12,4 +13,5 @@ def rb_coverage_test(name, srcs, deps = []):
         main = "//tools/coverage/ruby:coverage_bin.rb",
         args = ["$(location %s)" % srcs[0]],
         deps = deps + ["@bundle"],
+        env = {"MINIMUM_LINE_COVERAGE": str(MINIMUM_LINE_COVERAGE)},
     )

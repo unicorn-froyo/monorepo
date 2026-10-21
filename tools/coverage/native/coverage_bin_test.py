@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.coverage.native.coverage_bin import go_report
+from tools.coverage.native.coverage_bin import enforce_threshold, go_report
 
 
 class GoReportTest(unittest.TestCase):
@@ -38,6 +38,26 @@ class GoReportTest(unittest.TestCase):
     def test_malformed_profile_fails(self):
         with self.assertRaises(ValueError):
             self.report("not a coverage record\n")
+
+
+class ThresholdTest(unittest.TestCase):
+    def test_exact_boundary_passes(self):
+        enforce_threshold("LF:10\nLH:8\n", 80)
+
+    def test_below_boundary_fails(self):
+        with self.assertRaisesRegex(RuntimeError, "below 80%"):
+            enforce_threshold("LF:10001\nLH:8000\n", 80)
+
+    def test_aggregate_across_files(self):
+        enforce_threshold("LF:2\nLH:0\nLF:8\nLH:8\n", 80)
+
+    def test_empty_report_fails(self):
+        with self.assertRaisesRegex(RuntimeError, "empty line totals"):
+            enforce_threshold("LF:0\nLH:0\n", 80)
+
+    def test_invalid_totals_fail(self):
+        with self.assertRaisesRegex(RuntimeError, "invalid"):
+            enforce_threshold("LF:10\nLH:11\n", 80)
 
 
 if __name__ == "__main__":

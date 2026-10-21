@@ -8,6 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func TestServerConfiguration(t *testing.T) {
+	server := newServer()
+	if server.Addr != ":8080" {
+		t.Fatalf("server address = %q, want :8080", server.Addr)
+	}
+	response := httptest.NewRecorder()
+	server.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/widgets", nil))
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("server status = %d, want %d", response.Code, http.StatusAccepted)
+	}
+}
+
 func TestGetWidgets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	request := httptest.NewRequest(http.MethodGet, "/widgets", nil)
