@@ -5,5 +5,5 @@ async fn get_widgets() -> (StatusCode, Json<Vec<String>>) {
 }
 
 pub fn build_api() -> Router {
-    api_base::new().route("/widgets", get(get_widgets))
+    api_base::new().route("/widgets", get(get_widgets)).into_router()
 }

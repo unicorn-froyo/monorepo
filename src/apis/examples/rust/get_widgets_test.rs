@@ -9,6 +9,7 @@ async fn returns_widgets() {
         .unwrap();
 
     assert_eq!(response.status(), 202);
+    assert_eq!(response.headers()["x-content-type-options"], "nosniff");
     assert_eq!(
         response.headers().get("content-type").unwrap(),
         "application/json",

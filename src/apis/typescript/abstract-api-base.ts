@@ -6,6 +6,19 @@ export abstract class AbstractApiBase {
 
   protected constructor() {
     this.app = express();
+    this.app.disable("x-powered-by");
+    this.app.use((request, response, next) => {
+      response.set({
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      });
+      if (request.secure) {
+        response.set("Strict-Transport-Security", "max-age=31536000");
+      }
+      next();
+    });
     this.configureRoutes();
   }
 
