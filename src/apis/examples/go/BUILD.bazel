@@ -8,7 +8,7 @@ load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 go_coverage_test(
     name = "get_widgets_example_go_coverage_test",
-    tests = [":get_widgets_example_go_test"],
+    target = ":get_widgets_example_go_test",
 )
 
 bzl_lint_test(

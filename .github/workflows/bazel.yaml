@@ -45,11 +45,3 @@ jobs:
       - name: Test
         run: |
           "${GITHUB_WORKSPACE}/bin/bazel" test //...
-
-      - name: Go and Rust coverage
-        run: |
-          "${GITHUB_WORKSPACE}/bin/bazel" coverage --combined_report=lcov --instrumentation_filter='//src/apis[/:]' \
-            //src/apis/go:api_base_go_coverage_test \
-            //src/apis/examples/go:get_widgets_example_go_coverage_test \
-            //src/apis/rust:api_base_rs_coverage_test \
-            //src/apis/examples/rust:get_widgets_example_rs_coverage_test

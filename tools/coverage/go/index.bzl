@@ -1,5 +1,12 @@
-"""Go coverage using rules_go's native Bazel instrumentation."""
+"""Go coverage tests using rules_go's native instrumentation."""
 
-def go_coverage_test(name, tests):
-    """Group Go tests for `bazelisk coverage`; no second test binary is needed."""
-    native.test_suite(name = name, tests = tests)
+load("//tools/coverage/native:index.bzl", "coverage_attrs", "coverage_impl")
+
+def _go_coverage_test(ctx):
+    return coverage_impl(ctx, "go")
+
+go_coverage_test = rule(
+    implementation = _go_coverage_test,
+    attrs = coverage_attrs(),
+    test = True,
+)

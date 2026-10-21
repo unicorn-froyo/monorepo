@@ -6,7 +6,7 @@ load("//tools/lint/rust:index.bzl", "rs_lint_test")
 
 rs_coverage_test(
     name = "api_base_rs_coverage_test",
-    tests = [":api_base_rs_test"],
+    target = ":api_base_rs_test",
 )
 
 rs_lint_test(

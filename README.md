@@ -104,20 +104,13 @@ Reusable wrappers live under `tools/lint/<language>/index.bzl` and
 `tools/coverage/<language>/index.bzl`. Dependencies are pinned in the ecosystem
 lockfiles under `third_party/`; no globally installed linters are required.
 
-Python, Ruby, and TypeScript coverage targets run during `bazelisk test //...`.
-Ruby and TypeScript LCOV reports are saved in each coverage target's
-`bazel-testlogs/<package>/<target>/test.outputs/lcov.info`.
+All languages' coverage targets run during `bazelisk test //...` and are
+discoverable as test rules (not just test suites). Go and Rust coverage rules
+build their existing unit-test targets with instrumentation enabled via a
+configuration transition, then run and collect coverage without requiring a
+separate `bazel coverage` invocation.
 
-Go and Rust use Bazel's coverage command; their `*_coverage_test` suites select
-the existing unit tests without building duplicate test binaries:
-
-```bash
-bazelisk coverage --combined_report=lcov --instrumentation_filter='//src/apis[/:]' \
-  //src/apis/go:api_base_go_coverage_test \
-  //src/apis/examples/go:get_widgets_example_go_coverage_test \
-  //src/apis/rust:api_base_rs_coverage_test \
-  //src/apis/examples/rust:get_widgets_example_rs_coverage_test
-```
-
-The combined Go/Rust LCOV report is `bazel-out/_coverage/_coverage_report.dat`.
-Coverage is reported without imposing a new minimum-percentage policy.
+Go, Ruby, Rust, and TypeScript LCOV reports are saved in each coverage target's
+`bazel-testlogs/<package>/<target>/test.outputs/lcov.info`. Go also preserves its
+native block profile as `test.outputs/coverage.out`. Coverage is reported
+without imposing a new minimum-percentage policy.

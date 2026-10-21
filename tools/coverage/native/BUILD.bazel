@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/python:index.bzl", "py_lint_test")
+
+py_binary(
+    name = "coverage_bin",
+    srcs = ["coverage_bin.py"],
+    data = ["//third_party/golang:go.mod"],
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "coverage_bin_test",
+    srcs = [
+        "coverage_bin.py",
+        "coverage_bin_test.py",
+    ],
+)
+
+py_lint_test(
+    name = "native_coverage_py_lint_test",
+    srcs = glob(["*.py"]),
+)
+
+bzl_lint_test(
+    name = "native_coverage_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)
