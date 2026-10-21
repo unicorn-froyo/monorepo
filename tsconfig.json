@@ -2,10 +2,17 @@
   "compilerOptions": {
     "declaration": true,
     "esModuleInterop": true,
+    "baseUrl": ".",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "paths": {
+      "express": ["third_party/npm/node_modules/@types/express"],
+      "supertest": ["third_party/npm/node_modules/@types/supertest"],
+      "*": ["third_party/npm/node_modules/*"]
+    },
     "noUncheckedIndexedAccess": true,
     "strict": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "typeRoots": ["third_party/npm/node_modules/@types"]
   }
 }

@@ -57,10 +57,10 @@ All examples serve `GET /widgets` on port 8080.
 Go, Python, Ruby, Rust, and TypeScript have hermetic Bazel toolchains. Use
 `go_*` rules from `rules_go`, `py_*` rules from `rules_python`, `rb_*` rules from
 `rules_ruby`, `rust_*` rules from `rules_rust`, and `ts_project` from
-`aspect_rules_ts`. Go dependencies are locked in `go.sum`, Python dependencies
+`aspect_rules_ts`. Go dependencies are locked under `third_party/golang`, Python dependencies
 in `third_party/pypi/requirements.txt`, Ruby dependencies in
 `third_party/ruby/Gemfile.lock`, Rust dependencies under `third_party/rust`, and
-TypeScript dependencies in `pnpm-lock.yaml`.
+TypeScript dependencies under `third_party/npm`.
 
 ## How-to
 
