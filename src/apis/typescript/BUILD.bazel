@@ -18,7 +18,7 @@ ts_project(
     srcs = ["abstract_api_base.ts"],
     declaration = True,
     transpiler = "tsc",
-    tsconfig = "//:tsconfig",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
     visibility = ["//visibility:public"],
     deps = [
         "//third_party/npm:node_modules/@types/express",
@@ -32,7 +32,7 @@ ts_project(
     srcs = ["abstract_api_base_test.ts"],
     declaration = True,
     transpiler = "tsc",
-    tsconfig = "//:tsconfig",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [
         ":api_base_ts_lib",
         "//third_party/npm:node_modules/@types/node",

@@ -1,8 +1,9 @@
 {
+  "include": ["../../../src/apis/**/*.ts"],
   "compilerOptions": {
     "declaration": true,
     "esModuleInterop": true,
-    "baseUrl": ".",
+    "baseUrl": "../../..",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "paths": {
