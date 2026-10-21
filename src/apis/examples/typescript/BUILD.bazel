@@ -1,0 +1,125 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "get_widgets_example_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+ts_project(
+    name = "get_widgets_example_ts_lib",
+    srcs = ["get-widgets.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
+    deps = [
+        "//src/apis/typescript:api_base_ts_lib",
+        "//third_party/npm:node_modules/@types/express",
+    ],
+)
+
+ts_project(
+    name = "server_lib",
+    srcs = ["server.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
+    deps = [":get_widgets_example_ts_lib"],
+)
+
+ts_project(
+    name = "get_widgets_example_ts_test_lib",
+    srcs = ["get-widgets.test.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
+    deps = [
+        ":get_widgets_example_ts_lib",
+        "//third_party/npm:node_modules/@types/node",
+        "//third_party/npm:node_modules/@types/supertest",
+        "//third_party/npm:node_modules/supertest",
+    ],
+)
+
+js_test(
+    name = "get_widgets_example_ts_test",
+    data = [
+        ":get_widgets_example_ts_lib",
+        ":get_widgets_example_ts_test_lib",
+        "//src/apis/typescript:api_base_ts_lib",
+        "//third_party/npm:node_modules",
+        "//third_party/npm:node_modules/express",
+        "//third_party/npm:node_modules/supertest",
+    ],
+    entry_point = "get-widgets.test.js",
+    env = {"NODE_PATH": "third_party/npm/node_modules"},
+)
+
+pkg_tar(
+    name = "application_layer",
+    srcs = [
+        ":get_widgets_example_ts_lib",
+        ":server_lib",
+        "//src/apis/typescript:api_base_ts_lib",
+        "//third_party/npm:node_modules/express",
+    ],
+    include_runfiles = True,
+    package_dir = "/app",
+)
+
+oci_image(
+    name = "get_widgets_example_oci",
+    base = select({
+        "@platforms//cpu:arm64": "@node_base_linux_arm64_v8",
+        "@platforms//cpu:x86_64": "@node_base_linux_amd64",
+    }),
+    entrypoint = [
+        "node",
+        "/app/server.js.runfiles/_main/src/apis/examples/typescript/server.js",
+    ],
+    env = {
+        "NODE_PATH": "/app/server.js.runfiles/_main/third_party/npm/node_modules",
+    },
+    tags = ["manual"],
+    tars = [":application_layer"],
+    workdir = "/app",
+)
+
+oci_load(
+    name = "get_widgets_example_image",
+    image = ":get_widgets_example_oci",
+    repo_tags = ["get-widgets-typescript:latest"],
+    tags = ["manual"],
+)
+
+deploy_api(
+    name = "get-widgets-qa",
+    deployment_zone = "//src/zones/examples:example_qa",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-typescript:latest",
+    tags = [
+        "manual",
+        "qa",
+    ],
+)
+
+deploy_api(
+    name = "get-widgets-prod",
+    deployment_zone = "//src/zones/examples:example_prod",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-typescript:latest",
+    tags = [
+        "manual",
+        "prod",
+    ],
+)

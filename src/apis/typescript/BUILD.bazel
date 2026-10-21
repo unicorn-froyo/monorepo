@@ -1,0 +1,55 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "api_base_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+ts_project(
+    name = "api_base_ts_lib",
+    srcs = ["abstract-api-base.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//third_party/npm:node_modules/@types/express",
+        "//third_party/npm:node_modules/@types/node",
+        "//third_party/npm:node_modules/express",
+    ],
+)
+
+ts_project(
+    name = "api_base_ts_test_lib",
+    srcs = ["abstract-api-base.test.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = "//tools/toolchains/typescript:tsconfig",
+    deps = [
+        ":api_base_ts_lib",
+        "//third_party/npm:node_modules/@types/node",
+        "//third_party/npm:node_modules/@types/supertest",
+        "//third_party/npm:node_modules/supertest",
+    ],
+)
+
+js_test(
+    name = "api_base_ts_test",
+    data = [
+        ":api_base_ts_lib",
+        ":api_base_ts_test_lib",
+        "//third_party/npm:node_modules",
+        "//third_party/npm:node_modules/express",
+        "//third_party/npm:node_modules/supertest",
+    ],
+    entry_point = "abstract-api-base.test.js",
+    env = {"NODE_PATH": "third_party/npm/node_modules"},
+)
