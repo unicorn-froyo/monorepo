@@ -17,6 +17,9 @@ func TestGetWidgets(t *testing.T) {
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusAccepted)
 	}
+	if got := response.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", got)
+	}
 	if response.Body.String() != "[]" {
 		t.Fatalf("body = %q, want %q", response.Body.String(), "[]")
 	}

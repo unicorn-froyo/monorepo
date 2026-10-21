@@ -52,6 +52,9 @@ docker run --rm -p 8080:8080 get-widgets-typescript:latest
 
 All examples serve `GET /widgets` on port 8080.
 
+All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
+including consistent security headers on HTTP responses and HTTPS-only HSTS.
+
 ## Supported languages
 
 Go, Python, Ruby, Rust, and TypeScript have hermetic Bazel toolchains. Use

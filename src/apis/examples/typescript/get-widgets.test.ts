@@ -8,6 +8,7 @@ test("returns widgets", async () => {
   const response = await request(app).get("/widgets");
   assert.equal(response.status, 202);
   assert.deepEqual(response.body, []);
+  assert.equal(response.headers["x-content-type-options"], "nosniff");
   const contentType = response.headers["content-type"];
   assert.ok(contentType);
   assert.match(contentType, /^application\/json/);
