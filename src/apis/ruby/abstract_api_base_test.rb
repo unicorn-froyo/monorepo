@@ -2,7 +2,6 @@
 
 require "rack/mock"
 require_relative "abstract_api_base"
-require_relative "security_headers"
 
 class TestApiController < AbstractApiBase
   def message
@@ -12,7 +11,6 @@ end
 
 class TestApplication < Rails::Application
   config.api_only = true
-  config.middleware.insert_before 0, SecurityHeaders
   config.eager_load = false
   config.hosts.clear
   config.secret_key_base = "test-secret-key-base"

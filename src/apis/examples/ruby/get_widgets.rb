@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../../ruby/abstract_api_base"
-require_relative "../../ruby/security_headers"
 
 ENV["SECRET_KEY_BASE"] ||= "development-only-secret-key-base"
 
@@ -15,7 +14,6 @@ end
 # Example Rails API application.
 class GetWidgetsRuby < Rails::Application
   config.api_only = true
-  config.middleware.insert_before 0, SecurityHeaders
   config.eager_load = false
   config.hosts.clear
   config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")

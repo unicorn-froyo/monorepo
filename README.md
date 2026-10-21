@@ -56,9 +56,9 @@ API responses include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`
 `Referrer-Policy: no-referrer`, and a restrictive `Permissions-Policy`. HTTPS
 responses also include `Strict-Transport-Security` (one year, without
 `includeSubDomains` or preload). Python APIs using `AbstractApiBase` install the
-middleware automatically. Rails APIs must add `config.middleware.insert_before 0, SecurityHeaders`
-to their application configuration (see `src/apis/examples/ruby/get_widgets.rb`)
-to cover routes and framework-generated errors. If TLS terminates upstream,
+middleware automatically. Rails APIs using `AbstractApiBase` install the Rack
+middleware automatically via a Railtie, covering routes and framework-generated
+errors without additional application configuration. If TLS terminates upstream,
 configure the proxy and application to report the original HTTPS scheme.
 
 ## Supported languages
