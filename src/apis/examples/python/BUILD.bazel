@@ -30,7 +30,10 @@ py_binary(
 
 py_coverage_test(
     name = "get_widgets_example_py_coverage_test",
-    srcs = [":get_widgets_test.py"],
+    srcs = [
+        ":get_widgets_test.py",
+        "//src/apis/python:abstract_api_base_test.py",
+    ],
     deps = [
         ":get_widgets_example_py_lib",
         "//third_party/pypi:fastapi",

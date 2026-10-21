@@ -17,14 +17,20 @@ bzl_lint_test(
 
 pkg_tar(
     name = "api_base_layer",
-    srcs = ["abstract_api_base.rb"],
+    srcs = [
+        "abstract_api_base.rb",
+        "security_headers.rb",
+    ],
     package_dir = "/app/src/apis/ruby",
     strip_prefix = ".",
 )
 
 rb_library(
     name = "api_base_rb_lib",
-    srcs = [":abstract_api_base.rb"],
+    srcs = [
+        ":abstract_api_base.rb",
+        ":security_headers.rb",
+    ],
     deps = ["@bundle"],
 )
 
