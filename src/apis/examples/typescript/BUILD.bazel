@@ -18,7 +18,7 @@ bzl_lint_test(
 
 ts_project(
     name = "get_widgets_example_ts_lib",
-    srcs = ["get_widgets.ts"],
+    srcs = ["get-widgets.ts"],
     declaration = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
@@ -39,7 +39,7 @@ ts_project(
 
 ts_project(
     name = "get_widgets_example_ts_test_lib",
-    srcs = ["get_widgets_test.ts"],
+    srcs = ["get-widgets.test.ts"],
     declaration = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
@@ -61,7 +61,7 @@ js_test(
         "//third_party/npm:node_modules/express",
         "//third_party/npm:node_modules/supertest",
     ],
-    entry_point = "get_widgets_test.js",
+    entry_point = "get-widgets.test.js",
     env = {"NODE_PATH": "third_party/npm/node_modules"},
 )
 

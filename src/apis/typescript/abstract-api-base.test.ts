@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import request from "supertest";
 
-import { AbstractApiBase } from "./abstract_api_base.js";
+import { AbstractApiBase } from "./abstract-api-base.js";
 
 class HealthApi extends AbstractApiBase {
   public constructor() {

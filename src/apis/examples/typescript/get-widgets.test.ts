@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import request from "supertest";
 
-import { app } from "./get_widgets.js";
+import { app } from "./get-widgets.js";
 
 test("returns widgets", async () => {
   const response = await request(app).get("/widgets");

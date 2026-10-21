@@ -1,4 +1,4 @@
-import { AbstractApiBase } from "../../typescript/abstract_api_base.js";
+import { AbstractApiBase } from "../../typescript/abstract-api-base.js";
 
 export class GetWidgets extends AbstractApiBase {
   public constructor() {
