@@ -1,0 +1,21 @@
+[package]
+name = "get-widgets"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "get_widgets"
+path = "get_widgets.rs"
+
+[[bin]]
+name = "server"
+path = "server.rs"
+
+[dependencies]
+api-base = { path = "../../rust" }
+axum = "0.8.6"
+tokio = { version = "1.48.0", features = ["macros", "net", "rt-multi-thread"] }
+
+[dev-dependencies]
+tower = { version = "0.5.2", features = ["util"] }

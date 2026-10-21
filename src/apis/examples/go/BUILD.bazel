@@ -1,0 +1,117 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools:platform_transition.bzl", "platform_target")
+load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "get_widgets_example_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+go_library(
+    name = "get_widgets_example_go_lib",
+    srcs = [
+        "get_widgets.go",
+        "server.go",
+    ],
+    importpath = "github.com/unicorn-froyo/monorepo/src/apis/examples/go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//src/apis/go:api_base_go_lib",
+        "@com_github_gin_gonic_gin//:gin",
+    ],
+)
+
+go_binary(
+    name = "server",
+    embed = [":get_widgets_example_go_lib"],
+)
+
+go_test(
+    name = "get_widgets_example_go_test",
+    srcs = ["get_widgets_test.go"],
+    embed = [":get_widgets_example_go_lib"],
+    deps = ["@com_github_gin_gonic_gin//:gin"],
+)
+
+platform(
+    name = "aarch64_linux",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform(
+    name = "x86_64_linux",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform_target(
+    name = "linux_server",
+    platform = select({
+        "@platforms//cpu:arm64": ":aarch64_linux",
+        "@platforms//cpu:x86_64": ":x86_64_linux",
+    }),
+    target = ":server",
+)
+
+pkg_tar(
+    name = "application_layer",
+    srcs = [":linux_server"],
+    mode = "0555",
+    package_dir = "/app",
+)
+
+oci_image(
+    name = "get_widgets_example_oci",
+    architecture = select({
+        "@platforms//cpu:arm64": "arm64",
+        "@platforms//cpu:x86_64": "amd64",
+    }),
+    entrypoint = ["/app/server"],
+    env = {"GIN_MODE": "release"},
+    os = "linux",
+    tags = ["manual"],
+    tars = [":application_layer"],
+)
+
+oci_load(
+    name = "get_widgets_example_image",
+    image = ":get_widgets_example_oci",
+    repo_tags = ["get-widgets-go:latest"],
+    tags = ["manual"],
+)
+
+deploy_api(
+    name = "get-widgets-qa",
+    deployment_zone = "//src/zones/examples:example_qa",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-go:latest",
+    tags = [
+        "manual",
+        "qa",
+    ],
+)
+
+deploy_api(
+    name = "get-widgets-prod",
+    deployment_zone = "//src/zones/examples:example_prod",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-go:latest",
+    tags = [
+        "manual",
+        "prod",
+    ],
+)

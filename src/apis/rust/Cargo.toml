@@ -1,0 +1,11 @@
+[package]
+name = "api-base"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "abstract_api_base.rs"
+
+[dependencies]
+axum = "0.8.6"
