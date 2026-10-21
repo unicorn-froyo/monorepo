@@ -1,5 +1,11 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+go_coverage_test(
+    name = "api_base_go_coverage_test",
+    tests = [":api_base_go_test"],
+)
 
 bzl_lint_test(
     name = "api_base_bzl_lint_test",

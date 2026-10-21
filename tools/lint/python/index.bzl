@@ -1,64 +1,37 @@
-"""index.bzl provides the py_lint_test rule"""
+"""Python lint tests backed by Ruff."""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
-load("//tools:utils.bzl", "get_transitive_files")
 
 def _py_lint_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    test_files = " ".join([s.short_path for s in ctx.files.srcs])
-    python_path = ":".join(
-        [s.short_path for s in ctx.files.srcs] +
-        [s.short_path for s in ctx.files.deps],
-    )
-    script_content = "\n".join([
-        "#!/bin/sh",
-        "PYTHONPATH={python_path}".format(python_path = python_path),
-        "{linter_bin} {files} --rcfile={pylint_config}".format(
-            linter_bin = ctx.executable._pylint_bin.short_path,
-            files = test_files,
-            pylint_config = ctx.files._pylint_config[0].short_path,
+    ctx.actions.write(
+        script,
+        "#!/bin/sh\nset -eu\nexec %s check --no-cache --config %s %s\n" % (
+            ctx.executable._ruff_bin.short_path,
+            ctx.file._config.short_path,
+            " ".join(["'%s'" % f.short_path.replace("'", "'\\''") for f in ctx.files.srcs]),
         ),
-    ])
-
-    ctx.actions.write(script, script_content, is_executable = True)
-
-    runfiles = ctx.runfiles(
-        files = [script] + ctx.files._pylint_config +
-                ctx.files.srcs + ctx.files.deps + ctx.files.data +
-                get_transitive_files(ctx.attr._pylint_py),
+        is_executable = True,
     )
-    runfiles = runfiles.merge(ctx.attr._pylint_bin[DefaultInfo].default_runfiles)
-
-    return [DefaultInfo(
-        executable = script,
-        runfiles = runfiles,
-    )]
+    runfiles = ctx.runfiles(files = ctx.files.srcs + ctx.files.data + [ctx.file._config])
+    runfiles = runfiles.merge(ctx.attr._ruff_bin[DefaultInfo].default_runfiles)
+    return [DefaultInfo(executable = script, runfiles = runfiles)]
 
 py_lint_test = rule(
     implementation = _py_lint_test,
     attrs = {
-        "srcs": attr.label_list(
-            allow_files = True,
-            providers = [PyInfo],
-        ),
-        "deps": attr.label_list(
-            providers = [PyInfo],
-        ),
-        "data": attr.label_list(
-            allow_files = True,
-        ),
-        "_pylint_bin": attr.label(
-            default = "//tools/lint/python:pylint_bin",
+        "srcs": attr.label_list(allow_files = [".py"]),
+        # Retained for compatibility; Ruff does not import dependencies.
+        "deps": attr.label_list(providers = [PyInfo]),
+        "data": attr.label_list(allow_files = True),
+        "_ruff_bin": attr.label(
+            default = "//tools/lint/python:ruff_bin",
             executable = True,
             cfg = "exec",
         ),
-        "_pylint_py": attr.label(
-            default = "//third_party/pypi:pylint",
-            providers = [PyInfo],
-        ),
-        "_pylint_config": attr.label(
-            default = "//tools/lint/python:pylint_config",
-            allow_files = True,
+        "_config": attr.label(
+            default = "//tools/lint/python:ruff.toml",
+            allow_single_file = True,
         ),
     },
     test = True,

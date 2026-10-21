@@ -1,0 +1,17 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/ruby:index.bzl", "rb_lint_test")
+
+exports_files(["coverage_bin.rb"])
+
+rb_lint_test(
+    name = "ruby_coverage_rb_lint_test",
+    srcs = ["coverage_bin.rb"],
+)
+
+bzl_lint_test(
+    name = "ruby_coverage_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

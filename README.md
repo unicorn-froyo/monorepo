@@ -87,3 +87,37 @@ bazelisk build //...
 ```bash
 bazelisk test //...
 ```
+
+### Lint and coverage
+
+Lint checks run as part of the normal build/test workflow:
+
+| Language | Lint tool | Coverage tool |
+| --- | --- | --- |
+| Go | SDK analyzers via `go_lint` (nogo, checked during builds) | Native `rules_go` instrumentation |
+| Python | Ruff via `py_lint_test` | coverage.py via `py_coverage_test` |
+| Ruby | RuboCop via `rb_lint_test` | SimpleCov via `rb_coverage_test` |
+| Rust | Clippy and rustfmt via `rs_lint_test` | Native LLVM instrumentation via `rules_rust` |
+| TypeScript | ESLint via `ts_lint_test` | c8/V8 via `ts_coverage_test`, mapped to TypeScript sources |
+
+Reusable wrappers live under `tools/lint/<language>/index.bzl` and
+`tools/coverage/<language>/index.bzl`. Dependencies are pinned in the ecosystem
+lockfiles under `third_party/`; no globally installed linters are required.
+
+Python, Ruby, and TypeScript coverage targets run during `bazelisk test //...`.
+Ruby and TypeScript LCOV reports are saved in each coverage target's
+`bazel-testlogs/<package>/<target>/test.outputs/lcov.info`.
+
+Go and Rust use Bazel's coverage command; their `*_coverage_test` suites select
+the existing unit tests without building duplicate test binaries:
+
+```bash
+bazelisk coverage --combined_report=lcov --instrumentation_filter='//src/apis[/:]' \
+  //src/apis/go:api_base_go_coverage_test \
+  //src/apis/examples/go:get_widgets_example_go_coverage_test \
+  //src/apis/rust:api_base_rs_coverage_test \
+  //src/apis/examples/rust:get_widgets_example_rs_coverage_test
+```
+
+The combined Go/Rust LCOV report is `bazel-out/_coverage/_coverage_report.dat`.
+Coverage is reported without imposing a new minimum-percentage policy.

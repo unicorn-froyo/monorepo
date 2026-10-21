@@ -12,11 +12,6 @@ compile_pip_requirements(
 )
 
 py_library(
-    name = "astroid",
-    deps = [requirement("astroid")],
-)
-
-py_library(
     name = "boto3",
     deps = [
         requirement("boto3"),
@@ -49,17 +44,8 @@ py_library(
 )
 
 py_library(
-    name = "pylint",
-    deps = [
-        ":astroid",
-        requirement("astroid"),
-        requirement("dill"),
-        requirement("isort"),
-        requirement("mccabe"),
-        requirement("platformdirs"),
-        requirement("pylint"),
-        requirement("tomlkit"),
-    ],
+    name = "ruff",
+    deps = [requirement("ruff")],
 )
 
 py_library(

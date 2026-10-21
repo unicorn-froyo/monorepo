@@ -2,6 +2,8 @@
   "include": ["../../../src/apis/**/*.ts"],
   "compilerOptions": {
     "declaration": true,
+    "sourceMap": true,
+    "inlineSources": true,
     "esModuleInterop": true,
     "baseUrl": "../../..",
     "module": "NodeNext",
