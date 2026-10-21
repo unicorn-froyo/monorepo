@@ -41,6 +41,13 @@ class GoReportTest(unittest.TestCase):
 
 
 class ThresholdTest(unittest.TestCase):
+    def test_full_coverage_passes(self):
+        enforce_threshold("LF:10\nLH:10\n", 100)
+
+    def test_single_uncovered_line_fails_at_100(self):
+        with self.assertRaisesRegex(RuntimeError, "below 100%"):
+            enforce_threshold("LF:10000\nLH:9999\n", 100)
+
     def test_exact_boundary_passes(self):
         enforce_threshold("LF:10\nLH:8\n", 80)
 

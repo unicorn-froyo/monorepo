@@ -17,10 +17,28 @@ instrumented = transition(
     ],
 )
 
-def coverage_attrs():
+def _instrument_rust_impl(settings, attr):
+    result = _instrument_impl(settings, attr)
+
+    # Linux needs the profiler runtime initialized by the test executable,
+    # not just coverage instrumentation in its library dependencies.
+    result["//command_line_option:instrument_test_targets"] = True
+    return result
+
+rust_instrumented = transition(
+    implementation = _instrument_rust_impl,
+    inputs = [],
+    outputs = [
+        "//command_line_option:collect_code_coverage",
+        "//command_line_option:instrumentation_filter",
+        "//command_line_option:instrument_test_targets",
+    ],
+)
+
+def coverage_attrs(rust = False):
     """Attributes shared by native-language coverage tests."""
     return {
-        "target": attr.label(executable = True, cfg = instrumented, mandatory = True),
+        "target": attr.label(executable = True, cfg = rust_instrumented if rust else instrumented, mandatory = True),
         "_runner": attr.label(
             default = "//tools/coverage/native:coverage_bin",
             executable = True,

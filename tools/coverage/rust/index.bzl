@@ -16,7 +16,7 @@ def _rs_coverage_test(ctx):
 
 rs_coverage_test = rule(
     implementation = _rs_coverage_test,
-    attrs = coverage_attrs(),
+    attrs = coverage_attrs(rust = True),
     test = True,
     toolchains = ["@rules_rust//rust:toolchain_type"],
 )

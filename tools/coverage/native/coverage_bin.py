@@ -69,7 +69,10 @@ def main() -> None:
         merged = scratch / "coverage.profdata"
         subprocess.run([llvm_profdata, "merge", "-sparse", *map(str, profiles), "-o", str(merged)], check=True)
         report = subprocess.check_output(
-            [llvm_cov, "export", "--format=lcov", binary, f"--instr-profile={merged}"],
+            [
+                llvm_cov, "export", "--format=lcov", binary, f"--instr-profile={merged}",
+                "--ignore-filename-regex=_test[.]rs$",
+            ],
             text=True,
         )
     # Reject empty reports rather than passing a silently uninstrumented test.

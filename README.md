@@ -114,8 +114,8 @@ Go, Ruby, Rust, and TypeScript LCOV reports are saved in each coverage target's
 `bazel-testlogs/<package>/<target>/test.outputs/lcov.info`. Go also preserves its
 native block profile as `test.outputs/coverage.out`.
 
-Go, Ruby, Rust, and TypeScript coverage tests fail below **80% aggregate line
-coverage per target**, configured in `tools/coverage/config.bzl`. Reports are
-preserved even when the threshold fails. Python retains its stricter **100%**
-requirement in `tools/coverage/python/.coveragerc` (including branch coverage).
-The shared 80% minimum does not impose a branch/function threshold.
+All languages enforce **100% aggregate line coverage per target**. Go, Ruby,
+Rust, and TypeScript use `tools/coverage/config.bzl`; Python uses
+`tools/coverage/python/.coveragerc` and additionally measures branch coverage.
+Reports are preserved even when the threshold fails. The shared line-coverage
+minimum does not impose a branch/function threshold.
