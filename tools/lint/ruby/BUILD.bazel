@@ -1,0 +1,17 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+exports_files([".rubocop.yml"])
+
+filegroup(
+    name = "config",
+    srcs = [".rubocop.yml"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_lint_test(
+    name = "ruby_lint_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

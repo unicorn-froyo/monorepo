@@ -1,0 +1,12 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load(":index.bzl", "go_lint")
+
+go_lint(name = "go_lint")
+
+bzl_lint_test(
+    name = "go_lint_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

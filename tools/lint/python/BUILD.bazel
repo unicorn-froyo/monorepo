@@ -1,5 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load(":index.bzl", "py_lint_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,14 +15,15 @@ bzl_lint_test(
     ),
 )
 
-filegroup(
-    name = "pylint_config",
-    srcs = [":.pylintrc"],
+py_lint_test(
+    name = "python_lint_py_lint_test",
+    srcs = glob(["*.py"]),
 )
 
+exports_files(["ruff.toml"])
+
 py_binary(
-    name = "pylint_bin",
-    srcs = [":pylint_bin.py"],
-    main = ":pylint_bin.py",
-    deps = ["//third_party/pypi:pylint"],
+    name = "ruff_bin",
+    srcs = ["ruff_bin.py"],
+    deps = ["//third_party/pypi:ruff"],
 )

@@ -2,8 +2,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("//tools:platform_transition.bzl", "platform_target")
+load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+go_coverage_test(
+    name = "get_widgets_example_go_coverage_test",
+    target = ":get_widgets_example_go_test",
+)
 
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",

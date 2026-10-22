@@ -26,6 +26,23 @@ async fn creates_an_empty_router() {
 }
 
 #[tokio::test]
+async fn registers_routes() {
+    let response = api_base::new()
+        .route("/health", axum::routing::get(|| async { "healthy" }))
+        .into_router()
+        .oneshot(
+            Request::builder()
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+}
+
+#[tokio::test]
 async fn adds_hsts_on_https() {
     let response = api_base::new()
         .into_router()

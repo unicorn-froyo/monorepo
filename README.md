@@ -87,3 +87,35 @@ bazelisk build //...
 ```bash
 bazelisk test //...
 ```
+
+### Lint and coverage
+
+Lint checks run as part of the normal build/test workflow:
+
+| Language | Lint tool | Coverage tool |
+| --- | --- | --- |
+| Go | SDK analyzers via `go_lint` (nogo, checked during builds) | Native `rules_go` instrumentation |
+| Python | Ruff via `py_lint_test` | coverage.py via `py_coverage_test` |
+| Ruby | RuboCop via `rb_lint_test` | SimpleCov via `rb_coverage_test` |
+| Rust | Clippy and rustfmt via `rs_lint_test` | Native LLVM instrumentation via `rules_rust` |
+| TypeScript | ESLint via `ts_lint_test` | c8/V8 via `ts_coverage_test`, mapped to TypeScript sources |
+
+Reusable wrappers live under `tools/lint/<language>/index.bzl` and
+`tools/coverage/<language>/index.bzl`. Dependencies are pinned in the ecosystem
+lockfiles under `third_party/`; no globally installed linters are required.
+
+All languages' coverage targets run during `bazelisk test //...` and are
+discoverable as test rules (not just test suites). Go and Rust coverage rules
+build their existing unit-test targets with instrumentation enabled via a
+configuration transition, then run and collect coverage without requiring a
+separate `bazel coverage` invocation.
+
+Go, Ruby, Rust, and TypeScript LCOV reports are saved in each coverage target's
+`bazel-testlogs/<package>/<target>/test.outputs/lcov.info`. Go also preserves its
+native block profile as `test.outputs/coverage.out`.
+
+All languages enforce **100% aggregate line coverage per target**, with the
+minimum configured once in `tools/coverage/config.bzl`. Python additionally
+measures branch coverage via `tools/coverage/python/.coveragerc`.
+Reports are preserved even when the threshold fails. The shared line-coverage
+minimum does not impose a branch/function threshold.

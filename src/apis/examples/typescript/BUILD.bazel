@@ -2,8 +2,28 @@ load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/coverage/typescript:index.bzl", "ts_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/typescript:index.bzl", "ts_lint_test")
+
+ts_lint_test(
+    name = "get_widgets_example_ts_lint_test",
+    srcs = glob(["*.ts"]),
+)
+
+ts_coverage_test(
+    name = "get_widgets_example_ts_coverage_test",
+    data = [
+        ":get_widgets_example_ts_lib",
+        ":get_widgets_example_ts_test_lib",
+        "//src/apis/typescript:api_base_ts_lib",
+        "//third_party/npm:node_modules",
+        "//third_party/npm:node_modules/express",
+        "//third_party/npm:node_modules/supertest",
+    ],
+    entry_point = "src/apis/examples/typescript/get-widgets.test.js",
+)
 
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
@@ -20,6 +40,7 @@ ts_project(
     name = "get_widgets_example_ts_lib",
     srcs = ["get-widgets.ts"],
     declaration = True,
+    source_map = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [
@@ -32,6 +53,7 @@ ts_project(
     name = "server_lib",
     srcs = ["server.ts"],
     declaration = True,
+    source_map = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [":get_widgets_example_ts_lib"],
@@ -41,6 +63,7 @@ ts_project(
     name = "get_widgets_example_ts_test_lib",
     srcs = ["get-widgets.test.ts"],
     declaration = True,
+    source_map = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [

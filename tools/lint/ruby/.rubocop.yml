@@ -1,0 +1,17 @@
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 4.0
+  SuggestExtensions: false
+  CacheRootDirectory: <%= ENV.fetch('TEST_TMPDIR', '/tmp') %>/rubocop
+
+# These small API classes are documented in src/apis/STANDARDS.md.
+Style/Documentation:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+# Rails foundations keep their Railtie alongside the application class;
+# test files similarly include their small fixture application.
+Style/OneClassPerFile:
+  Enabled: false

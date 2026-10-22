@@ -1,0 +1,16 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+js_library(
+    name = "config",
+    srcs = ["eslint.config.mjs"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_lint_test(
+    name = "typescript_lint_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

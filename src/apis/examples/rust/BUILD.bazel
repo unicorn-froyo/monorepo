@@ -1,8 +1,24 @@
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/rust:index.bzl", "rs_lint_test")
+
+rs_coverage_test(
+    name = "get_widgets_example_rs_coverage_test",
+    target = ":get_widgets_example_rs_test",
+)
+
+rs_lint_test(
+    name = "get_widgets_example_rs_lint_test",
+    targets = [
+        ":get_widgets_example_rs_lib",
+        ":get_widgets_example_rs_test",
+        ":server",
+    ],
+)
 
 exports_files(["Cargo.toml"])
 
