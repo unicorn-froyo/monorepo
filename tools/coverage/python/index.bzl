@@ -2,6 +2,7 @@
 
 load("@rules_python//python:defs.bzl", "PyInfo")
 load("//tools:utils.bzl", "get_transitive_deps")
+load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
 
 def _py_coverage_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
@@ -18,9 +19,10 @@ def _py_coverage_test(ctx):
             files = test_files,
             config_path = ctx.files._coverage_config[0].short_path,
         ),
-        "{coverage_bin} report --rcfile={config_path}".format(
+        "{coverage_bin} report --rcfile={config_path} --fail-under={minimum}".format(
             coverage_bin = ctx.executable._py_coverage_bin.short_path,
             config_path = ctx.files._coverage_config[0].short_path,
+            minimum = MINIMUM_LINE_COVERAGE,
         ),
     ])
 

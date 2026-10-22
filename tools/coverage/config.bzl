@@ -1,6 +1,6 @@
-"""Coverage policy for Go, Ruby, Rust, and TypeScript test targets.
+"""Shared minimum coverage for every language's coverage test targets.
 
-Python's matching threshold is configured in python/.coveragerc.
+Python additionally measures branch coverage via python/.coveragerc.
 """
 
 MINIMUM_LINE_COVERAGE = 100
