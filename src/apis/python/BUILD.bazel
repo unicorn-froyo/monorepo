@@ -28,6 +28,7 @@ py_library(
 py_coverage_test(
     name = "api_base_py_coverage_test",
     srcs = [":abstract_api_base_test.py"],
+    source_targets = [":api_base_py_lib"],
     deps = [
         ":api_base_py_lib",
         "//third_party/pypi:fastapi",

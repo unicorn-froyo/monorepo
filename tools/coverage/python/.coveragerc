@@ -12,8 +12,3 @@ exclude_lines =
 
     # Don't complain if non-runnable code isn't run:
     if __name__ == "__main__":
-
-ignore_errors = True
-
-[xml]
-output = coverage.xml

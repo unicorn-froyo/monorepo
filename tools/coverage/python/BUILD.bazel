@@ -1,5 +1,6 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/python:index.bzl", "py_lint_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,4 +25,19 @@ py_binary(
     srcs = [":coverage_bin.py"],
     main = ":coverage_bin.py",
     deps = ["//third_party/pypi:coverage"],
+)
+
+py_test(
+    name = "coverage_bin_test",
+    srcs = ["coverage_bin_test.py"],
+    data = [
+        ":.coveragerc",
+        ":coverage_bin.py",
+    ],
+    deps = ["//third_party/pypi:coverage"],
+)
+
+py_lint_test(
+    name = "python_coverage_py_lint_test",
+    srcs = glob(["*.py"]),
 )
