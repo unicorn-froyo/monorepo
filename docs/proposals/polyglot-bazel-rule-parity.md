@@ -1,4 +1,4 @@
-# Python and polyglot Bazel rule parity
+# Polyglot Bazel rule parity
 
 - Status: **Approved plan; implementation in progress**
 - Approved: 2026-10-24
@@ -6,14 +6,57 @@
 
 ## Purpose
 
-Use the Python rules as an inventory baseline, identify meaningful capability
-gaps across Go, Ruby, Rust, and TypeScript, and address weaknesses in Python's
-own coverage and quality checks. Deliver the work as independent pull requests
-so each change can be reviewed, tested, and merged on its own.
+Inventory the repo's existing Bazel rule coverage, identify the gaps across Go,
+Ruby, Rust, TypeScript, and Python, and close the missing repository rule
+categories so each language follows the same monorepo-level contract. Deliver
+work as independent pull requests so each change can be reviewed, tested, and
+merged on its own.
+
+This document defines parity at the repository rules level rather than by
+matching exact tool names or implementation details. Every supported language
+must provide a maintainer-supported Bazel contract for dependency management,
+linting, formatting, type checking, testing, coverage, and OCI packaging. The
+repository may use different underlying tools per language, but it must retain
+the same rule categories and success criteria across ecosystems.
 
 This document records the assessment, selected tradeoffs, and acceptance
 criteria. The linked PR descriptions, handoffs, and CI checks record current
 execution status.
+
+## Required repository rule contract
+
+Each language in the monorepo must satisfy the same rule checklist:
+
+- Dependency lock and maintenance rules
+- Lint rule
+- Formatter rule (`py_fmt_test` for Python; equivalent formatter test rule per
+  ecosystem, plus a runnable formatter binary target in Bazel for local use)
+- Type-check rule
+- Test rule
+- Coverage rule
+- OCI image/package rule
+- Example service execution contract
+- Shared API behavior and runtime expectations
+
+The gap is that the current monorepo does not fully satisfy this checklist in
+every language. The resulting work is to close those gaps across Go, Ruby,
+Rust, TypeScript, and Python until each language has the same rule categories
+available in the repository.
+
+Naming pattern: repository rule names should follow the language prefix and
+capability name, e.g. `py_lint_test`, `py_fmt_test`, `py_coverage_test`, and the
+corresponding `rb_*`, `rs_*`, `ts_*`, and `go_*` rules for the other
+ecosystems. Formatter validation rules should be named `{lang}_fmt_test`; the
+corresponding runnable formatter binary should follow the same capability naming,
+e.g. `{lang}_fmt` or `{lang}_fmt_bin` if a separate binary target is required.
+Dependency maintenance targets should follow the same pattern, e.g.
+`{lang}_dependencies_test`, `{lang}_dependencies_check`, and
+`{lang}_dependencies_update`.
+
+Language-specific tooling may differ: Ruff vs clang-format vs ESLint vs RuboCop,
+Pyright vs Go vet vs cargo check vs TypeScript type-check. The repository must
+still provide the equivalent Bazel-maintained rule categories and enforce the
+same class of quality gate everywhere they are supported.
 
 ## Baseline inventory
 
@@ -29,14 +72,43 @@ baseline repository-wide build and all 63 tests passed.
 | Runtime and dependencies | Python 3.14, `pip.parse`, ecosystem requirements lock | All have dependency integrations and lockfiles |
 | Dependency maintenance | `requirements.update` and `requirements.test` | No equivalent repository-defined update/check targets |
 | Lint | Ruff through `py_lint_test` | Go nogo; Ruby RuboCop; Rust Clippy/rustfmt; TypeScript ESLint |
+| Formatter | None in the repository rule set | Rust formatting is checked; TypeScript/Go tooling has formatter workflows not uniformly standardized |
+| Type checking | None in the repository rule set | Go compiler checks; Rust compiler checks; TypeScript has typed compilation; Ruby does not define an equivalent repository gate |
 | Coverage in ordinary tests | unittest and coverage.py through `py_coverage_test` | All have API-base and example coverage targets |
 | Service packaging | Linux-targeted executable/runfiles layer and OCI image/load targets | All have OCI examples, with different build/startup behavior |
-| Python formatting and types | Ruff lint only | Rust already checks formatting; compiled languages have compiler type checks |
 
 The gaps concern how existing capabilities behave, rather than a lack of basic
-language support.
+language support. No language yet satisfies the full repository rule checklist.
+The important distinction in this proposal is between parity work and
+language-specific quality improvements. The first category is part of the
+required rule contract above; the second category is only included when the
+repository explicitly decides to raise every language to the same hardening bar.
+
+In practical terms, this means the monorepo should define and implement rule
+families in a consistent naming pattern across all ecosystems:
+`{lang}_lint_test`, `{lang}_fmt_test`, `{lang}_fmt`, `{lang}_typecheck_test`,
+`{lang}_coverage_test`, `{lang}_dependencies_test`, `{lang}_dependencies_check`,
+`{lang}_dependencies_update`, and the equivalent runtime/package rules for each
+language.
 
 ## Gap analysis
+
+The matrix below records which repository rule categories are present at the
+inventory commit for each language and, where known, the exact Bazel or tool
+interfaces in use. This is the parity baseline used to scope the implementation.
+
+| Language | Dependency maintenance | Lint | Formatter | Type checking | Coverage | OCI packaging | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Python | `requirements.update`, `requirements.test` | `py_lint_test` (`ruff check`) | `py_fmt_test` (`ruff format --check`) | `py_typecheck_test` (proposed) | `py_coverage_test` (`coverage.py`) | OCI image/load targets and Linux execution packaging | Strongest baseline; also the target of explicit quality hardening |
+| Go | `go_dependencies_update`, `go_dependencies_check`, `go_dependencies_test` (proposed) | `go_lint_test` (proposed; currently `nogo` is used but not standardized by name) | `go_fmt_test` (proposed) | `go_typecheck_test` (proposed; compiler type checking exists implicitly) | `go_coverage_test` | OCI examples exist; deployment behavior differs | Missing maintenance parity and explicit rule naming |
+| Ruby | `rb_dependencies_update`, `rb_dependencies_check`, `rb_dependencies_test` (proposed) | `rb_lint_test` (proposed; currently `rb_lint_test` exists in wrapper-style naming but not the uniform pattern) | `rb_fmt_test` (proposed) | `rb_typecheck_test` (proposed) | `rb_coverage_test` | OCI examples exist; startup installs gems and native extensions | Startup packaging path is a concrete gap |
+| Rust | `rs_dependencies_update`, `rs_dependencies_check`, `rs_dependencies_test` (proposed) | `rs_lint_test` (proposed; currently `clippy`/`rustfmt` are used but not standardized by name) | `rs_fmt_test` (proposed) | `rs_typecheck_test` (proposed; compiler type checking exists implicitly) | `rs_coverage_test` | OCI examples exist; startup rebuilds via `cargo build --release --locked` | Packaging mismatch at runtime is a concrete gap |
+| TypeScript | `ts_dependencies_update`, `ts_dependencies_check`, `ts_dependencies_test` (proposed) | `ts_lint_test` (wrapper exists, but naming needs to be standardized) | `ts_fmt_test` (proposed) | `ts_typecheck_test` (proposed; `tsc`/typed compilation exists as toolchain behavior) | `ts_coverage_test` | OCI examples exist | Coverage wrapper flexibility gap, not a missing basic runtime rule |
+
+This matrix makes the main difference visible: the repository already provides a
+complete language runtime contract for Python, plus dependency maintenance and
+coverage wrappers, while other ecosystems have equivalents for runtime, lint, and
+coverage but are uneven in maintenance, formatting, and type-check enforcement.
 
 The first five findings retain the numbering used to scope the implementation.
 Source links below refer to the inventory commit so the evidence remains
@@ -53,6 +125,120 @@ available after obsolete packaging files are removed.
 | P2. Python's measured source scope is loose | The [coverage configuration](https://github.com/unicorn-froyo/monorepo/blob/d8fcb81201eeb272ae4c81ce076d7ca8562c73cc/tools/coverage/python/.coveragerc) does not select application sources or exclude tests explicitly. Entirely unimported application files can escape measurement, and source errors are ignored. | Declare application source targets, include unimported files, exclude tests/tooling/external dependencies, and fail on source-analysis errors. |
 | P3. Python has no formatter/type gate | The [lint rule](https://github.com/unicorn-froyo/monorepo/blob/d8fcb81201eeb272ae4c81ce076d7ca8562c73cc/tools/lint/python/index.bzl) runs Ruff `check`, without formatter or static type checks. | Add Ruff `format --check` and pinned Pyright checks through Bazel. |
 
+## Plan to close the gaps
+
+The implementation must close the missing repository rule categories across all
+supported languages. The required work is not Python-only; it is to make each
+language satisfy the same monorepo rule contract.
+
+### Rule naming standard
+
+The repository should standardize on the following naming pattern across
+ecosystems:
+
+Dependency locks must also live beneath `third_party/`, grouped by ecosystem, with
+no lockfile stored at the repository root. The standard repository layout is:
+`third_party/{ecosystem}/` for Python, Go, Ruby, Rust, npm, and any other
+package manager used by the monorepo.
+
+| Rule family | Required naming pattern |
+| --- | --- |
+| Lint | `{lang}_lint_test` |
+| Formatter check | `{lang}_fmt_test` |
+| Formatter binary | `{lang}_fmt` or `{lang}_fmt_bin` |
+| Type-check | `{lang}_typecheck_test` |
+| Coverage | `{lang}_coverage_test` |
+| Dependency validation | `{lang}_dependencies_test` |
+| Dependency check | `{lang}_dependencies_check` |
+| Dependency update | `{lang}_dependencies_update` |
+| OCI/package | `{lang}_image`, `{lang}_package`, or equivalent |
+
+The language prefix should match the ecosystem: `py_`, `go_`, `rb_`, `rs_`, and
+`ts_`. This makes the missing rule categories visible in a single glance and
+keeps new rules consistent as the repository grows.
+
+All language-specific rule implementations must be hosted under the repository's
+standard tool layout: `tools/{tool}/{language}` (Bazel label convention:
+`@tools//{tool}/{language}`). All Bazel rules, macros, and helper Starlark files
+must also live under `tools/`; no rule or macro may be added under application
+directories like `src/`, `third_party/`, or the repository root. Build
+orchestration and validation must run through Bazel rather than via
+language-specific shell pipelines. Drafts should not scatter language-specific
+logic across ad hoc directories or the repository root.
+
+### Python
+
+| Rule family | Required rule name | Exists today? | Action |
+| --- | --- | --- | --- |
+| Dependency maintenance | `py_dependencies_test`, `py_dependencies_check`, `py_dependencies_update` | Partially; `requirements.test` and `requirements.update` exist in the Python ecosystem package, but not under a single `py_dependencies_*` naming convention | Standardize naming while preserving the existing workflow |
+| Lint | `py_lint_test` | Yes | Preserve and keep as repo contract |
+| Formatter check | `py_fmt_test` | No | Add `py_fmt_test` using Ruff format check |
+| Formatter binary | `py_fmt` or `py_fmt_bin` | No | Add the runnable formatter binary target |
+| Type-check | `py_typecheck_test` | No | Add Pyright-backed `py_typecheck_test` |
+| Coverage | `py_coverage_test` | Yes | Improve source targeting and artifact preservation |
+| OCI packaging | `py_image`, `py_package`, or equivalent | Yes | Preserve and validate service packaging |
+
+### Go
+
+| Rule family | Required rule name | Exists today? | Action |
+| --- | --- | --- | --- |
+| Dependency maintenance | `go_dependencies_test`, `go_dependencies_check`, `go_dependencies_update` | No | Add explicit dependency maintenance and checks |
+| Lint | `go_lint_test` | Possibly via `nogo`, but not standardized by name | Standardize the Bazel rule naming and repo contract |
+| Formatter check | `go_fmt_test` | No | Add formatter check rule |
+| Formatter binary | `go_fmt` or `go_fmt_bin` | No | Add runnable formatter binary target |
+| Type-check | `go_typecheck_test` | Implicit via compiler behavior, not explicit repository rule | Make type-checking explicit in Bazel |
+| Coverage | `go_coverage_test` | Yes, via wrapper | Preserve current behavior and document line/block handling |
+| OCI packaging | `go_image`, `go_package`, or equivalent | Yes, examples exist | Validate packaging parity |
+
+### Ruby
+
+| Rule family | Required rule name | Exists today? | Action |
+| --- | --- | --- | --- |
+| Dependency maintenance | `rb_dependencies_test`, `rb_dependencies_check`, `rb_dependencies_update` | No | Add explicit dependency maintenance rules |
+| Lint | `rb_lint_test` | Potentially via RuboCop wrapper, but not uniform by naming | Standardize naming and repo contract |
+| Formatter check | `rb_fmt_test` | No | Add formatter parity rule |
+| Formatter binary | `rb_fmt` or `rb_fmt_bin` | No | Add runnable formatter binary target |
+| Type-check | `rb_typecheck_test` | No | Decide whether Ruby adopts a repository-defined type-check or documents it as intentionally deferred |
+| Coverage | `rb_coverage_test` | Yes | Improve suite/data support and coverage artifact handling |
+| OCI packaging | `rb_image`, `rb_package`, or equivalent | Yes | Remove startup-time gem installation and validate OCI behavior |
+
+### Rust
+
+| Rule family | Required rule name | Exists today? | Action |
+| --- | --- | --- | --- |
+| Dependency maintenance | `rs_dependencies_test`, `rs_dependencies_check`, `rs_dependencies_update` | No | Add explicit dependency maintenance rules |
+| Lint | `rs_lint_test` | Possibly via Clippy/rustfmt path, but not standardized by name | Standardize naming and repo contract |
+| Formatter check | `rs_fmt_test` | Not as a distinct repo rule | Add repo-managed formatter test |
+| Formatter binary | `rs_fmt` or `rs_fmt_bin` | Not as a distinct repo rule | Add runnable formatter binary target |
+| Type-check | `rs_typecheck_test` | Implicit via compiler build, not explicit repository rule | Make compiler type-checking explicit in Bazel |
+| Coverage | `rs_coverage_test` | Yes | Preserve current wrapper behavior and document gate semantics |
+| OCI packaging | `rs_image`, `rs_package`, or equivalent | Yes | Package the Bazel-built server directly and remove startup rebuilds |
+
+### TypeScript
+
+| Rule family | Required rule name | Exists today? | Action |
+| --- | --- | --- | --- |
+| Dependency maintenance | `ts_dependencies_test`, `ts_dependencies_check`, `ts_dependencies_update` | No | Add explicit dependency maintenance rules |
+| Lint | `ts_lint_test` | Yes via ESLint wrapper, but not fully uniform | Standardize naming and repo contract |
+| Formatter check | `ts_fmt_test` | No | Add formatter rule and test |
+| Formatter binary | `ts_fmt` or `ts_fmt_bin` | No | Add runnable formatter binary target |
+| Type-check | `ts_typecheck_test` | Implicit via `tsc`/typed compilation, not explicit repo rule | Make type-check part of the Bazel rule contract |
+| Coverage | `ts_coverage_test` | Yes | Broaden wrapper flexibility for multiple entry points and runtime data |
+| OCI packaging | `ts_image`, `ts_package`, or equivalent | Yes | Keep OCI examples aligned with repo contract |
+
+### Execution plan
+
+| Step | Goal | Work |
+| --- | --- | --- |
+| 1 | Define the repo rule contract | Record the required rule families and naming standard in the repository documentation. |
+| 2 | Implement the missing rule families | Add the missing rule families above for Python, Go, Ruby, Rust, and TypeScript, one language at a time. |
+| 3 | Normalize formatter and type-check rules | Make each formatter and type-check rule a first-class Bazel target with both CI enforcement and local execution support. |
+| 4 | Record deferred rules explicitly | If a language intentionally does not implement a rule, document that category as explicitly out of scope with a rationale. |
+| 5 | Validate repo-wide parity | Each PR must run `bazelisk build //...`, `bazelisk test //...`, and the focused checks for the rule family it adds. |
+
+This plan converts the current ad hoc rule coverage into a shared, explicit,
+repository-owned contract across all supported languages.
+
 ## Approved decisions
 
 - **Image build hosts:** build Rust and Ruby images on matching Linux amd64 and
@@ -65,6 +251,11 @@ available after obsolete packaging files are removed.
 - **Dependency validation:** ordinary tests check manifest/direct-lock
   consistency offline. Explicit commands can access registries to reproduce
   resolution in scratch. Full resolution is not claimed by the offline tests.
+- **Language quality gates:** formatter and type-checking are required parity
+  categories for ecosystems that adopt them as repository-maintained checks. A
+  language may omit a rule category only if the repository intentionally
+  declares that category out of scope for that ecosystem; it is not added by
+  default to one language alone.
 - **Python type checker:** use Pyright from the existing npm/Bazel toolchain,
   pinned in the ecosystem lockfile, with Python 3.14 standard checking.
 - **Delivery:** use six independent branches/worktrees from the inventory base,
@@ -141,6 +332,12 @@ available after obsolete packaging files are removed.
   suppressions for intentional negative tests only.
 - Use real tools to test accepted/rejected formatting, valid/invalid assignments,
   and undeclared imports. Ensure the checker actually checks the requested files.
+
+This workstream is explicitly framed as Python quality hardening within the
+repository rule contract, not as proof that all languages already provide the
+same static-analysis gates. If the repository later decides that Ruby, Go, or
+TypeScript require equivalent formatter or type-check rules, those should be
+added as explicit parity follow-ups with separate acceptance criteria.
 
 Every implementation PR runs `bazelisk build //...` and `bazelisk test //...`
 alongside its focused checks. Manual image targets require explicit validation
