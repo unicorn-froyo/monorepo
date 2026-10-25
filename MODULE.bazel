@@ -75,12 +75,21 @@ pip.parse(
 use_repo(pip, "pip")
 
 ruby = use_extension("@rules_ruby//ruby:extensions.bzl", "ruby")
+
+# Keep native gem builds on the same Ruby patch release as the pinned image.
+ruby.toolchain(
+    name = "ruby",
+    portable_ruby = True,
+    version = "4.0.7",
+)
 ruby.bundle_fetch(
     name = "bundle",
     gemfile = "//third_party/ruby:Gemfile",
     gemfile_lock = "//third_party/ruby:Gemfile.lock",
 )
-use_repo(ruby, "bundle")
+use_repo(ruby, "bundle", "ruby", "ruby_toolchains")
+
+register_toolchains("@ruby_toolchains//:all")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(

@@ -1,4 +1,5 @@
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_pkg//pkg:mappings.bzl", "REMOVE_BASE_DIRECTORY", "pkg_files", "strip_prefix")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
@@ -60,23 +61,44 @@ pkg_tar(
     strip_prefix = ".",
 )
 
-pkg_tar(
-    name = "gems_layer",
+# A native Linux worker installs the bundle, including source-gem extensions,
+# before packaging. Incompatible image targets give an explicit Linux platform
+# diagnostic when requested from macOS; ordinary build //... remains portable.
+filegroup(
+    name = "installed_gems",
     srcs = ["@bundle"],
-    package_dir = "/usr/local/bundle",
-    strip_prefix = "vendor/bundle",
+    output_group = "gems",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+pkg_files(
+    name = "bundle_files",
+    srcs = [":installed_gems"],
+    prefix = "/usr/local/bundle",
+    renames = {
+        ":installed_gems": REMOVE_BASE_DIRECTORY,
+    },
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
 pkg_tar(
-    name = "linux_gem_layer",
-    srcs = select({
-        "@platforms//cpu:arm64": ["@bundle//:third_party/ruby/vendor/cache/nokogiri-1.19.4-aarch64-linux-gnu.gem"],
-        "@platforms//cpu:x86_64": ["@bundle//:third_party/ruby/vendor/cache/nokogiri-1.19.4-x86_64-linux-gnu.gem"],
-    }),
-    package_dir = "/usr/local/bundle/external/rules_ruby++ruby+bundle/vendor/bundle/ruby/4.0.0/cache",
-    remap_paths = {
-        "external/rules_ruby++ruby+bundle/third_party/ruby/vendor/cache": ".",
-    },
+    name = "gems_layer",
+    srcs = [
+        ":bundle_files",
+        ":bundler_files",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+# bundle install does not install Bundler itself into its output tree. Include
+# the locked version so RubyGems never attempts to download it at startup.
+pkg_files(
+    name = "bundler_files",
+    srcs = ["@bundle//:bundler-2.6.9"],
+    excludes = ["@bundle//:third_party/ruby/vendor/cache/bundler-2.6.9.gem"],
+    prefix = "/usr/local/bundle/ruby/4.0.0",
+    strip_prefix = strip_prefix.from_root("bundler-2.6.9"),
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
 oci_image(
@@ -90,16 +112,19 @@ oci_image(
         "/app/src/apis/examples/ruby/server.sh",
     ],
     env = {
-        "BUNDLE_CACHE_PATH": "/usr/local/bundle/external/rules_ruby++ruby+bundle/vendor/bundle/ruby/4.0.0/cache",
+        "BUNDLE_DISABLE_SHARED_GEMS": "true",
         "BUNDLE_FROZEN": "true",
         "BUNDLE_GEMFILE": "/app/third_party/ruby/Gemfile",
-        "BUNDLE_PATH": "/tmp/bundle",
+        "BUNDLE_IGNORE_CONFIG": "true",
+        "BUNDLE_PATH": "/usr/local/bundle",
+        "GEM_HOME": "/usr/local/bundle/ruby/4.0.0",
+        "GEM_PATH": "/usr/local/bundle/ruby/4.0.0",
         "RAILS_ENV": "production",
     },
     tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
     tars = [
         ":gems_layer",
-        ":linux_gem_layer",
         "//third_party/ruby:gemfile_layer",
         "//src/apis/ruby:api_base_layer",
         ":application_layer",
@@ -112,4 +137,5 @@ oci_load(
     image = ":get_widgets_example_oci",
     repo_tags = ["get-widgets-ruby:latest"],
     tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
 )

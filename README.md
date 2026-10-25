@@ -52,6 +52,19 @@ docker run --rm -p 8080:8080 get-widgets-typescript:latest
 
 All examples serve `GET /widgets` on port 8080.
 
+Build the Ruby image on a Linux worker matching the desired image architecture
+(amd64 or arm64). Its Bazel bundle action compiles native gem extensions using
+Ruby 4.0.7, matching the pinned runtime image. The image contains the installed
+bundle at `/usr/local/bundle`; startup only executes Puma and performs no gem
+installation. An explicit Ruby image build on macOS fails with a Linux platform
+compatibility diagnostic. Normal builds and tests remain available on macOS.
+
+After loading the Ruby image, run its offline startup check:
+
+```bash
+bash .github/ruby-image-smoke.sh
+```
+
 All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
 including consistent security headers on HTTP responses and HTTPS-only HSTS.
 
