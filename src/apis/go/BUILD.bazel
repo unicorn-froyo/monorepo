@@ -2,6 +2,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
+filegroup(
+    name = "dependency_sources",
+    srcs = glob(["*.go"]),
+    visibility = ["//third_party/golang:__pkg__"],
+)
+
 go_coverage_test(
     name = "api_base_go_coverage_test",
     target = ":api_base_go_test",

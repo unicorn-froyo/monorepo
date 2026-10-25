@@ -65,6 +65,55 @@ in `third_party/pypi/requirements.txt`, Ruby dependencies in
 `third_party/ruby/Gemfile.lock`, Rust dependencies under `third_party/rust`, and
 TypeScript dependencies under `third_party/npm`.
 
+## Dependency maintenance
+
+Go, npm, Ruby, and Rust expose the same maintenance targets under their
+`third_party` package (`golang`, `npm`, `ruby`, or `rust`):
+
+```bash
+# Fast, offline manifest/direct-lock consistency checks; included in test //....
+bazelisk test //third_party/golang:dependencies.test
+
+# Run the package manager in scratch, failing with a diff if synchronization
+# changes a lock. May contact registries; never writes workspace files.
+bazelisk run //third_party/golang:dependencies.check
+
+# Synchronize the checked-in lock files after editing the manifest.
+bazelisk run //third_party/golang:dependencies.update
+```
+
+The update and check commands use Bazel's language toolchains and existing locks,
+preserving compatible versions. They do not request a blanket dependency upgrade.
+All package-manager writes and caches stay in a temporary directory until an
+update succeeds. Only the ecosystem's declared lock outputs are copied back;
+Go also copies back `go.mod` because `go mod tidy` maintains indirect requirements.
+The npm runner uses pnpm from `package.json#packageManager`; Ruby maintenance uses
+Bundler 2.6.9 from `Gemfile.lock` (update its tool label when changing Bundler).
+No globally installed package managers are used.
+
+The offline tests have a deliberately narrower guarantee than a resolver run:
+
+- Go parses `go.mod` with the SDK and checks that each required module/version
+  has a structurally valid `go.sum` entry. It does not verify downloaded content
+  or whether the import graph is tidy. The full commands stage both API Go
+  source packages alongside `go.mod`; add new Go packages to that source list.
+- npm checks pnpm v9 lock metadata, direct dependency names/specifiers, and their
+  package records against `package.json`.
+- Ruby uses Bundler's Gemfile/lock equivalence check and verifies that each direct
+  gem requirement has a matching locked specification, without installing gems.
+- Rust checks the synthetic dependency manifest's direct names and numeric
+  version requirements, package references, and checksum metadata against
+  `dependencies.Cargo.lock`. Unsupported prerelease/version syntax fails explicitly.
+  These checks do not re-resolve features or validate downloaded crate contents.
+
+Use the explicit `.check` command for package-manager synchronization validation.
+It permits registry access and starts with empty scratch caches, avoiding implicit
+host-cache dependencies. Rust maintenance only owns `dependencies.Cargo.lock`;
+the separate `Cargo.lock` used by the current example container is unchanged.
+Python retains its existing `requirements.update` and `requirements.test` workflow:
+edit `third_party/pypi/requirements.in`, then run
+`bazelisk run //third_party/pypi:requirements.update`.
+
 ## How-to
 
 ### Install Bazel

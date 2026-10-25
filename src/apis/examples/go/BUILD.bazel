@@ -6,6 +6,12 @@ load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
+filegroup(
+    name = "dependency_sources",
+    srcs = glob(["*.go"]),
+    visibility = ["//third_party/golang:__pkg__"],
+)
+
 go_coverage_test(
     name = "get_widgets_example_go_coverage_test",
     target = ":get_widgets_example_go_test",

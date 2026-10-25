@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/python:index.bzl", "py_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "runner",
+    srcs = ["runner.py"],
+)
+
+py_test(
+    name = "runner_test",
+    srcs = [
+        "runner.py",
+        "runner_test.py",
+    ],
+)
+
+py_lint_test(
+    name = "dependencies_py_lint_test",
+    srcs = glob(["*.py"]),
+)
+
+bzl_lint_test(
+    name = "dependencies_bzl_lint_test",
+    data = glob([
+        "*.bzl",
+        "*.bazel",
+    ]),
+)

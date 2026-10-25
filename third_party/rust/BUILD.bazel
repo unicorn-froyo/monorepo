@@ -1,4 +1,15 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/dependencies:index.bzl", "dependency_workflow")
+
+dependency_workflow(
+    name = "dependencies",
+    srcs = [
+        "Cargo.toml",
+        "dependencies.Cargo.lock",
+        "placeholder.rs",
+    ],
+    language = "rust",
+)
 
 pkg_tar(
     name = "cargo_lock_layer",

@@ -1,6 +1,16 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/dependencies:index.bzl", "dependency_workflow")
 
 package(default_visibility = ["//visibility:public"])
+
+dependency_workflow(
+    name = "dependencies",
+    srcs = [
+        "Gemfile",
+        "Gemfile.lock",
+    ],
+    language = "ruby",
+)
 
 pkg_tar(
     name = "gemfile_layer",

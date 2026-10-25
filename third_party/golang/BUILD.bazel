@@ -1,3 +1,16 @@
+load("//tools/dependencies:index.bzl", "dependency_workflow")
+
+dependency_workflow(
+    name = "dependencies",
+    srcs = [
+        "go.mod",
+        "go.sum",
+        "//src/apis/examples/go:dependency_sources",
+        "//src/apis/go:dependency_sources",
+    ],
+    language = "golang",
+)
+
 exports_files([
     "go.mod",
     "go.sum",
