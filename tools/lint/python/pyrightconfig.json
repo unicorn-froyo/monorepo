@@ -1,0 +1,6 @@
+{
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "standard",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "error"
+}

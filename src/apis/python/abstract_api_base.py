@@ -1,4 +1,5 @@
 """FastAPI base class for HTTP APIs."""
+
 from abc import ABC, abstractmethod
 
 from fastapi import FastAPI
