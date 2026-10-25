@@ -1,4 +1,3 @@
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
@@ -28,17 +27,6 @@ bzl_lint_test(
         ],
         allow_empty = True,
     ),
-)
-
-pkg_tar(
-    name = "api_base_layer",
-    srcs = [
-        "Cargo.toml",
-        "abstract_api_base.rs",
-    ],
-    package_dir = "/app/src/apis/rust",
-    strip_prefix = ".",
-    visibility = ["//visibility:public"],
 )
 
 rust_library(

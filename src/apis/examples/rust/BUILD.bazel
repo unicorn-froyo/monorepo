@@ -5,6 +5,7 @@ load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/rust:index.bzl", "rs_lint_test")
+load(":image.bzl", "native_linux_binary")
 
 rs_coverage_test(
     name = "get_widgets_example_rs_coverage_test",
@@ -67,16 +68,18 @@ rust_test(
     ],
 )
 
+native_linux_binary(
+    name = "linux_server",
+    binary = ":server",
+    tags = ["manual"],
+)
+
 pkg_tar(
     name = "application_layer",
-    srcs = [
-        "Cargo.toml",
-        "get_widgets.rs",
-        "server.rs",
-        "server.sh",
-    ],
-    package_dir = "/app/src/apis/examples/rust",
-    strip_prefix = ".",
+    srcs = [":linux_server"],
+    mode = "0555",
+    package_dir = "/app",
+    tags = ["manual"],
 )
 
 oci_image(
@@ -85,17 +88,10 @@ oci_image(
         "@platforms//cpu:arm64": "@rust_base_linux_arm64_v8",
         "@platforms//cpu:x86_64": "@rust_base_linux_amd64",
     }),
-    entrypoint = [
-        "/bin/sh",
-        "/app/src/apis/examples/rust/server.sh",
-    ],
+    entrypoint = ["/app/server"],
     tags = ["manual"],
-    tars = [
-        "//src/apis/rust:api_base_layer",
-        "//third_party/rust:cargo_lock_layer",
-        ":application_layer",
-    ],
-    workdir = "/app/src/apis/examples/rust",
+    tars = [":application_layer"],
+    workdir = "/app",
 )
 
 oci_load(

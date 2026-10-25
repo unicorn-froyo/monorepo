@@ -1,0 +1,60 @@
+name: Rust OCI images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust_image:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: rust-image-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'MODULE.bazel.lock', 'third_party/rust/dependencies.Cargo.lock') }}
+          restore-keys: |
+            rust-image-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Bazelisk
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL "https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-${ARCH}" -o "$RUNNER_TEMP/bin/bazelisk"
+          chmod +x "$RUNNER_TEMP/bin/bazelisk"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Build the manual OCI image and loader
+        run: bazelisk build //src/apis/examples/rust:get_widgets_example_oci //src/apis/examples/rust:get_widgets_example_image
+
+      - name: Load the image
+        run: bazelisk run //src/apis/examples/rust:get_widgets_example_image
+
+      - name: Check image architecture and direct entrypoint
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          test "$(docker image inspect get-widgets-rust:latest --format '{{.Architecture}}')" = "$ARCH"
+          test "$(docker image inspect get-widgets-rust:latest --format '{{json .Config.Entrypoint}}')" = '["/app/server"]'
+
+      - name: Test offline startup and HTTP behavior
+        run: bash .github/test-rust-image.sh

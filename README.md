@@ -59,6 +59,12 @@ bundle at `/usr/local/bundle`; startup only executes Puma and performs no gem
 installation. An explicit Ruby image build on macOS fails with a Linux platform
 compatibility diagnostic. Normal builds and tests remain available on macOS.
 
+The Rust image packages the Bazel-built server directly and starts without
+running Cargo or downloading dependencies. Build its image on a Linux amd64 or
+arm64 worker matching the intended image architecture. Image builds from macOS
+and cross-compilation are unsupported; native Rust builds and tests still work
+on macOS. CI explicitly builds and smoke-tests both Linux image architectures.
+
 All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
 including consistent security headers on HTTP responses and HTTPS-only HSTS.
 
