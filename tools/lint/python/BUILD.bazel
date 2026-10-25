@@ -1,6 +1,7 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@npm//third_party/npm:pyright/package_json.bzl", pyright = "bin")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load(":index.bzl", "py_lint_test")
+load(":index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,7 +21,54 @@ py_lint_test(
     srcs = glob(["*.py"]),
 )
 
-exports_files(["ruff.toml"])
+py_format_test(
+    name = "python_lint_py_format_test",
+    srcs = glob(["*.py"]),
+)
+
+py_typecheck_test(
+    name = "python_lint_py_typecheck_test",
+    srcs = glob(["*.py"]),
+    deps = ["//third_party/pypi:ruff"],
+)
+
+exports_files([
+    "pyrightconfig.json",
+    "ruff.toml",
+])
+
+pyright.pyright_binary(
+    name = "pyright_bin",
+)
+
+py_binary(
+    name = "typecheck_bin",
+    srcs = ["typecheck_bin.py"],
+)
+
+py_test(
+    name = "quality_checks_test",
+    srcs = ["quality_checks_test.py"],
+    args = [
+        "--ruff",
+        "$(location :ruff_bin)",
+        "--pyright",
+        "$(location :pyright_bin)",
+        "--runner",
+        "$(location :typecheck_bin)",
+        "--ruff_config",
+        "$(location :ruff.toml)",
+        "--pyright_config",
+        "$(location :pyrightconfig.json)",
+    ],
+    data = [
+        ":pyright_bin",
+        ":pyrightconfig.json",
+        ":ruff.toml",
+        ":ruff_bin",
+        ":typecheck_bin",
+    ],
+)
 
 py_binary(
     name = "ruff_bin",

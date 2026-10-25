@@ -20,10 +20,7 @@ class GoReportTest(unittest.TestCase):
         self.assertNotIn("DA:6,", report)
 
     def test_overlapping_blocks_keep_covered_line(self):
-        report = self.report(
-            "src/apis/example.go:3.1,4.5 1 2\n"
-            "src/apis/example.go:4.6,5.5 1 0\n"
-        )
+        report = self.report("src/apis/example.go:3.1,4.5 1 2\nsrc/apis/example.go:4.6,5.5 1 0\n")
         self.assertIn("DA:4,2\nDA:5,0\nLF:3\nLH:2\n", report)
 
     def test_multiple_files_have_separate_records(self):
