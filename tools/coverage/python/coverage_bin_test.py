@@ -30,9 +30,7 @@ class CoverageRunnerTest(unittest.TestCase):
 
     def run_project(self, sources, tests, minimum=100):
         manifest = self.root / "manifest.json"
-        manifest.write_text(
-            json.dumps({"sources": sources, "tests": tests, "imports": []})
-        )
+        manifest.write_text(json.dumps({"sources": sources, "tests": tests, "imports": []}))
         env = os.environ.copy()
         env.update(
             {

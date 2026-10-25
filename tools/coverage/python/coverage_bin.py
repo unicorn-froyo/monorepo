@@ -30,9 +30,7 @@ def application_sources(candidates: list[str], tests: list[str]) -> list[str]:
             continue
         result.append(candidate)
     if not result:
-        raise ValueError(
-            "source_targets contains no workspace application Python sources"
-        )
+        raise ValueError("source_targets contains no workspace application Python sources")
     return result
 
 
@@ -74,9 +72,7 @@ def run(manifest_file: Path, config: Path, minimum: float) -> int:
     output.mkdir(parents=True, exist_ok=True)
     scratch.mkdir(parents=True, exist_ok=True)
     runfiles = Path(os.environ.get("TEST_SRCDIR", Path.cwd().parent))
-    sys.path[:0] = [str(Path.cwd())] + [
-        str(runfiles / path) for path in manifest["imports"]
-    ]
+    sys.path[:0] = [str(Path.cwd())] + [str(runfiles / path) for path in manifest["imports"]]
 
     measurement = Coverage(
         config_file=str(config),
