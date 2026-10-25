@@ -1,8 +1,8 @@
 # Python and polyglot Bazel rule parity
 
-Status: **Approved plan; implementation in progress**  
-Approved: 2026-10-24  
-Audience: maintainers of this repository's build rules and API examples
+- Status: **Approved plan; implementation in progress**
+- Approved: 2026-10-24
+- Audience: maintainers of this repository's build rules and API examples
 
 ## Purpose
 
