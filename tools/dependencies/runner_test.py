@@ -130,6 +130,25 @@ class DependencyWorkflowTest(unittest.TestCase):
             with self.subTest(version=version, requirement=requirement):
                 self.assertEqual(rust_requirement_matches(version, requirement), expected)
 
+    def test_rust_rejects_operator_wildcards_and_malformed_wildcard_placement(self):
+        for requirement in (
+            "^1.2.*",
+            "~1.*",
+            "=1.*",
+            ">=1.*",
+            "<=*",
+            "1.*.3",
+            "*.1",
+            "*.*",
+            "*, >=1",
+        ):
+            with self.subTest(requirement=requirement):
+                with self.assertRaisesRegex(ValueError, "Unsupported Cargo wildcard requirement"):
+                    rust_requirement_matches("1.2.3", requirement)
+        for requirement in ("*", "1.*", "1.*.*", "1.2.*"):
+            with self.subTest(requirement=requirement):
+                self.assertTrue(rust_requirement_matches("1.2.3", requirement))
+
     def test_rust_checks_direct_requirements_and_preserves_distinct_runtime_lock(self):
         manifest = self.write(
             "source/Cargo.toml",

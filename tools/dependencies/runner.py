@@ -104,8 +104,8 @@ end
 def rust_requirement_matches(version, requirement):
     """Check Cargo's numeric caret/tilde/exact/range/wildcard requirements.
 
-    Fail explicitly for prereleases or unsupported syntax instead of accepting
-    a lock whose direct version could not actually be validated.
+    Fail explicitly for prereleases, operator/wildcard combinations, or other
+    unsupported syntax instead of accepting a lock without validation.
     """
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError(f"Unsupported Cargo prerelease/version: {version}")
@@ -117,6 +117,16 @@ def rust_requirement_matches(version, requirement):
         if not match:
             raise ValueError(f"Unsupported Cargo requirement: {requirement}")
         operator, *components = match.groups()
+        if "*" in components:
+            first_wildcard = components.index("*")
+            if (
+                operator is not None
+                or any(
+                    component not in (None, "*") for component in components[first_wildcard + 1 :]
+                )
+                or (first_wildcard == 0 and requirement.strip() != "*")
+            ):
+                raise ValueError(f"Unsupported Cargo wildcard requirement: {requirement}")
         numeric = []
         for component in components:
             if component in (None, "*"):

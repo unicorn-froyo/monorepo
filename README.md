@@ -103,7 +103,8 @@ The offline tests have a deliberately narrower guarantee than a resolver run:
   gem requirement has a matching locked specification, without installing gems.
 - Rust checks the synthetic dependency manifest's direct names and numeric
   version requirements, package references, and checksum metadata against
-  `dependencies.Cargo.lock`. Unsupported prerelease/version syntax fails explicitly.
+  `dependencies.Cargo.lock`. Prerelease syntax, operator/wildcard combinations,
+  and malformed wildcard placements are unsupported and fail explicitly.
   These checks do not re-resolve features or validate downloaded crate contents.
 
 Use the explicit `.check` command for package-manager synchronization validation.
