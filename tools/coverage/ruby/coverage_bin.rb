@@ -6,7 +6,10 @@ require "simplecov-lcov"
 
 # Ruby resolves require_relative through runfile symlinks. Use the real source
 # root so SimpleCov does not silently discard workspace files as external.
-test_file = ARGV.fetch(0)
+test_files = ARGV.dup
+raise ArgumentError, "At least one test script is required" if test_files.empty?
+
+test_file = test_files.first
 source_root = File.realpath(test_file).delete_suffix(test_file)
 report_dir = ENV.fetch("TEST_UNDECLARED_OUTPUTS_DIR")
 FileUtils.mkdir_p(report_dir)
@@ -26,4 +29,4 @@ SimpleCov.start do
   add_filter "/tools/"
 end
 
-require File.realpath(test_file)
+test_files.each { |file| require File.realpath(file) }

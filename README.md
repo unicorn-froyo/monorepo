@@ -116,6 +116,21 @@ native block profile as `test.outputs/coverage.out`.
 
 All languages enforce **100% aggregate line coverage per target**, with the
 minimum configured once in `tools/coverage/config.bzl`. Python additionally
-measures branch coverage via `tools/coverage/python/.coveragerc`.
+includes branch coverage in its existing coverage.py threshold via
+`tools/coverage/python/.coveragerc`.
 Reports are preserved even when the threshold fails. The shared line-coverage
 minimum does not impose a branch/function threshold.
+
+| Language | Coverage gate | Branch behavior |
+| --- | --- | --- |
+| Go | Aggregate lines converted from native block profiles | No separate branch gate |
+| Python | coverage.py aggregate statements and branches, requiring both to be fully covered at 100% | Branch measurement and enforcement enabled |
+| Ruby | Aggregate lines | Branch measurement disabled |
+| Rust | Aggregate LLVM lines | No separate branch gate |
+| TypeScript | Aggregate V8 lines mapped to sources | Branches collected; threshold explicitly zero |
+
+`rb_coverage_test` accepts one or more `srcs` test scripts, loads them in order
+in one Ruby process, and accepts runtime files through `data`.
+`ts_coverage_test` accepts either the existing `entry_point` string or a nonempty
+`entry_points` list; Node runs each suite in a separate process and c8 combines
+their coverage. Both forms preserve declared runtime `data`.

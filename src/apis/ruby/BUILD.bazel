@@ -17,6 +17,16 @@ rb_coverage_test(
     deps = [":api_base_rb_lib"],
 )
 
+rb_coverage_test(
+    name = "api_base_rb_multi_coverage_test",
+    srcs = [
+        ":abstract_api_base_test.rb",
+        ":coverage_data_test.rb",
+    ],
+    data = ["coverage_fixture.txt"],
+    deps = [":api_base_rb_lib"],
+)
+
 bzl_lint_test(
     name = "api_base_bzl_lint_test",
     data = glob(
