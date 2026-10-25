@@ -27,7 +27,11 @@ def go_report(profile: Path, module: str = "") -> str:
     for filename, lines in sorted(files.items()):
         records += [f"SF:{filename}"]
         records += [f"DA:{line},{count}" for line, count in sorted(lines.items())]
-        records += [f"LF:{len(lines)}", f"LH:{sum(count > 0 for count in lines.values())}", "end_of_record"]
+        records += [
+            f"LF:{len(lines)}",
+            f"LH:{sum(count > 0 for count in lines.values())}",
+            "end_of_record",
+        ]
     return "\n".join(records) + "\n"
 
 
@@ -67,10 +71,16 @@ def main() -> None:
         if not profiles:
             raise RuntimeError("Rust test produced no coverage profiles")
         merged = scratch / "coverage.profdata"
-        subprocess.run([llvm_profdata, "merge", "-sparse", *map(str, profiles), "-o", str(merged)], check=True)
+        subprocess.run(
+            [llvm_profdata, "merge", "-sparse", *map(str, profiles), "-o", str(merged)], check=True
+        )
         report = subprocess.check_output(
             [
-                llvm_cov, "export", "--format=lcov", binary, f"--instr-profile={merged}",
+                llvm_cov,
+                "export",
+                "--format=lcov",
+                binary,
+                f"--instr-profile={merged}",
                 "--ignore-filename-regex=_test[.]rs$",
             ],
             text=True,

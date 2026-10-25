@@ -1,9 +1,11 @@
 """Tests for the FastAPI API base class."""
+
 from asyncio import run
 from unittest import TestCase, main
 
 from fastapi import Response
 from fastapi.testclient import TestClient
+from starlette.types import Message, Receive, Scope, Send
 
 from src.apis.python.abstract_api_base import AbstractApiBase
 from src.apis.python.security_headers import SecurityHeadersMiddleware
@@ -26,7 +28,8 @@ class TestApiBase(TestCase):
     def test_is_abstract(self):
         """The base cannot be instantiated without route configuration."""
         with self.assertRaises(TypeError):
-            AbstractApiBase(  # pylint: disable=abstract-class-instantiated
+            # This deliberately invalid construction tests ABC's runtime check.
+            AbstractApiBase(  # pyright: ignore[reportAbstractUsage]
                 title="Test"
             )
 
@@ -64,20 +67,30 @@ class TestApiBase(TestCase):
 
     def test_non_http_scope_is_unchanged(self):
         """WebSocket and lifespan traffic passes through without modification."""
-        scopes = []
+        scopes: list[Scope] = []
+        messages: list[Message] = []
 
-        async def app(scope, _receive, _send):
+        async def app(scope: Scope, receive: Receive, send: Send) -> None:
             scopes.append(scope)
+            await send(await receive())
 
-        scope = {"type": "lifespan"}
-        run(SecurityHeadersMiddleware(app)(scope, app, app))
+        async def receive() -> Message:
+            return {"type": "lifespan.startup"}
+
+        async def send(message: Message) -> None:
+            messages.append(message)
+
+        scope: Scope = {"type": "lifespan"}
+        run(SecurityHeadersMiddleware(app)(scope, receive, send))
         self.assertEqual(scopes, [scope])
+        self.assertEqual(messages, [{"type": "lifespan.startup"}])
 
     def test_overrides_unsafe_headers(self):
         """A route cannot accidentally undo the response policy."""
-        client = TestClient(self.Api().app, base_url="https://testserver")
+        app = self.Api().app
+        client = TestClient(app, base_url="https://testserver")
 
-        @client.app.get("/custom")
+        @app.get("/custom")
         async def custom():
             return Response(
                 headers={"X-Frame-Options": "SAMEORIGIN", "Strict-Transport-Security": "max-age=0"}

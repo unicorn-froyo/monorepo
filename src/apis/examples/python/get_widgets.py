@@ -1,4 +1,5 @@
 """Example FastAPI widgets service."""
+
 from http import HTTPStatus
 
 from fastapi import Response
