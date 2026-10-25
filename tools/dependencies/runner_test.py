@@ -109,6 +109,27 @@ class DependencyWorkflowTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsupported Cargo"):
             rust_requirement_matches("1.2.3-beta.1", "1.2")
 
+    def test_rust_partial_comparators_compare_only_specified_components(self):
+        for version, requirement, expected in (
+            ("1.2.1", ">1.2", False),
+            ("1.2.999", ">1.2", False),
+            ("1.3.0", ">1.2", True),
+            ("1.2.9", "<=1.2", True),
+            ("1.3.0", "<=1.2", False),
+            ("1.2.0", ">=1.2", True),
+            ("1.1.999", ">=1.2", False),
+            ("1.1.999", "<1.2", True),
+            ("1.2.0", "<1.2", False),
+            ("1.99.99", ">1", False),
+            ("2.0.0", ">1", True),
+            ("1.99.99", "<=1", True),
+            ("2.0.0", "<=1", False),
+            ("1.2.4", ">1.2.3", True),
+            ("1.2.4", "<=1.2.3", False),
+        ):
+            with self.subTest(version=version, requirement=requirement):
+                self.assertEqual(rust_requirement_matches(version, requirement), expected)
+
     def test_rust_checks_direct_requirements_and_preserves_distinct_runtime_lock(self):
         manifest = self.write(
             "source/Cargo.toml",

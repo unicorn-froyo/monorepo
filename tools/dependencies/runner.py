@@ -126,12 +126,17 @@ def rust_requirement_matches(version, requirement):
             continue
         lower = tuple(numeric + [0] * (3 - len(numeric)))
         if operator in (">", ">=", "<", "<=", "="):
+            # Cargo compares only specified components: >1.2 excludes all
+            # 1.2.x versions, while <=1.2 includes them. Padding with zero
+            # would incorrectly turn those into >1.2.0 and <=1.2.0.
+            prefix = actual[: len(numeric)]
+            requested = tuple(numeric)
             matches = {
-                ">": actual > lower,
-                ">=": actual >= lower,
-                "<": actual < lower,
-                "<=": actual <= lower,
-                "=": actual[: len(numeric)] == tuple(numeric),
+                ">": prefix > requested,
+                ">=": prefix >= requested,
+                "<": prefix < requested,
+                "<=": prefix <= requested,
+                "=": prefix == requested,
             }[operator]
         else:
             if "*" in components or operator == "~":
