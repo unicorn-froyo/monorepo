@@ -3,6 +3,8 @@
 branch = True
 omit =
     */site-packages/*
+    */tests/*
+    *_test.py
 
 [report]
 # Regexes for lines to exclude from consideration

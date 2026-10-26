@@ -22,7 +22,6 @@ def application_sources(candidates: list[str], tests: list[str]) -> list[str]:
             or ".." in path.parts
             or path.suffix != ".py"
             or candidate in tests
-            or path.parts[0] == "tools"
             or "tests" in path.parts
             or path.name.startswith("test_")
             or path.name.endswith("_test.py")

@@ -52,6 +52,8 @@ py_test(
     args = [
         "--ruff",
         "$(location :ruff_bin)",
+        "--formatter",
+        "$(location :py_format_bin)",
         "--pyright",
         "$(location :pyright_bin)",
         "--runner",
@@ -62,6 +64,7 @@ py_test(
         "$(location :pyrightconfig.json)",
     ],
     data = [
+        ":py_format_bin",
         ":pyright_bin",
         ":pyrightconfig.json",
         ":ruff.toml",
@@ -73,5 +76,13 @@ py_test(
 py_binary(
     name = "ruff_bin",
     srcs = ["ruff_bin.py"],
+    deps = ["//third_party/pypi:ruff"],
+)
+
+py_binary(
+    name = "py_format_bin",
+    srcs = ["format_bin.py"],
+    data = [":ruff.toml"],
+    main = "format_bin.py",
     deps = ["//third_party/pypi:ruff"],
 )

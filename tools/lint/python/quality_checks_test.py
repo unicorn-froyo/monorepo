@@ -10,6 +10,7 @@ from pathlib import Path
 
 class QualityChecksTest(unittest.TestCase):
     ruff = Path()
+    formatter = Path()
     pyright = Path()
     runner = Path()
     ruff_config = Path()
@@ -53,6 +54,19 @@ class QualityChecksTest(unittest.TestCase):
         result = self.format_source("answer = 42\n")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_runnable_formatter_rewrites_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "example.py"
+            path.write_text("answer=42\n")
+            result = subprocess.run(
+                [str(self.formatter), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(path.read_text(), "answer = 42\n")
+
     def test_pyright_rejects_incompatible_assignment(self) -> None:
         result = self.typecheck_source('answer: int = "incorrect"\n')
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
@@ -70,7 +84,14 @@ class QualityChecksTest(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    for option in ("ruff", "pyright", "runner", "ruff_config", "pyright_config"):
+    for option in (
+        "ruff",
+        "formatter",
+        "pyright",
+        "runner",
+        "ruff_config",
+        "pyright_config",
+    ):
         parser.add_argument("--" + option, required=True, type=Path)
     args, remaining = parser.parse_known_args()
     for option, value in vars(args).items():

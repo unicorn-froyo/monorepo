@@ -7,8 +7,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from coverage import CoverageData
+
+from tools.coverage.python import coverage_bin
 
 
 class CoverageRunnerTest(unittest.TestCase):
@@ -78,14 +81,120 @@ class CoverageRunnerTest(unittest.TestCase):
         self.assertTrue(data.has_arcs())
         return report
 
+    def test_source_scope_accepts_tooling_sources_and_omits_test_files(self):
+        self.assertEqual(
+            coverage_bin.application_sources(
+                [
+                    "tools/coverage/python/coverage_bin.py",
+                    "tools/coverage/python/coverage_bin_test.py",
+                    "tools/coverage/python/tests/helper.py",
+                    "../external/site-packages/coverage/__init__.py",
+                ],
+                [],
+            ),
+            ["tools/coverage/python/coverage_bin.py"],
+        )
+        with self.assertRaisesRegex(ValueError, "no workspace application Python sources"):
+            coverage_bin.application_sources(["app_test.py"], ["app_test.py"])
+
+    def test_write_reports_saves_raw_data_and_rewrites_lcov_paths(self):
+        source = self.root / "app.py"
+        self.write("app.py", "VALUE = 1\n")
+        self.output.mkdir()
+        self.scratch.mkdir()
+        (self.scratch / ".coverage").write_text("raw coverage")
+        measurement = Mock()
+        data = measurement.get_data.return_value
+
+        def write_lcov(*, outfile, **_kwargs):
+            Path(outfile).write_text(f"SF:{source}\nDA:1,1\nend_of_record\n")
+
+        measurement.lcov_report.side_effect = write_lcov
+        measurement.report.return_value = 100.0
+
+        percentage = coverage_bin.write_reports(
+            measurement,
+            [str(source)],
+            {str(source): "app.py"},
+            self.output,
+            self.scratch,
+        )
+
+        self.assertEqual(percentage, 100.0)
+        self.assertEqual((self.output / ".coverage").read_text(), "raw coverage")
+        self.assertEqual(
+            (self.output / "lcov.info").read_text(),
+            "SF:app.py\nDA:1,1\nend_of_record\n",
+        )
+        data.add_arcs.assert_called_once_with({})
+        data.touch_files.assert_called_once_with([str(source)])
+        measurement.save.assert_called_once_with()
+
+    def test_run_enforces_test_success_and_threshold(self):
+        self.write("app.py", "VALUE = 1\n")
+        self.write("app_test.py", "")
+        manifest = self.root / "manifest.json"
+        manifest.write_text(
+            json.dumps({"sources": ["app.py"], "tests": ["app_test.py"], "imports": []})
+        )
+        measurement = Mock()
+        program = Mock()
+        program.result.testsRun = 1
+        old_cwd = Path.cwd()
+        self.addCleanup(os.chdir, old_cwd)
+        os.chdir(self.root)
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "TEST_UNDECLARED_OUTPUTS_DIR": str(self.output),
+                    "TEST_TMPDIR": str(self.scratch),
+                },
+            ),
+            patch.object(coverage_bin, "Coverage", return_value=measurement),
+            patch.object(coverage_bin.unittest, "main", return_value=program),
+            patch.object(coverage_bin, "write_reports", return_value=100.0),
+        ):
+            program.result.wasSuccessful.return_value = True
+            self.assertEqual(coverage_bin.run(manifest, self.config, 100), 0)
+            program.result.wasSuccessful.return_value = False
+            self.assertEqual(coverage_bin.run(manifest, self.config, 100), 1)
+
+        self.assertEqual(measurement.start.call_count, 2)
+        self.assertEqual(measurement.stop.call_count, 2)
+
+    def test_main_returns_runner_status_and_reports_expected_errors(self):
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "--manifest", "manifest", "--config", "config", "--minimum", "90"],
+            ),
+            patch.object(coverage_bin, "run", return_value=1) as run,
+        ):
+            self.assertEqual(coverage_bin.main(), 1)
+            run.assert_called_once_with(Path("manifest"), Path("config"), 90.0)
+
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "--manifest", "manifest", "--config", "config", "--minimum", "90"],
+            ),
+            patch.object(coverage_bin, "run", side_effect=ValueError("bad manifest")),
+            patch("sys.stderr"),
+        ):
+            self.assertEqual(coverage_bin.main(), 2)
+
     def test_never_imported_source_counts_as_uncovered(self):
         self.write("app.py", "VALUE = 1\n")
         self.write("unused.py", "UNUSED = 2\n")
         self.write(
-            "test_app.py",
+            "app_test.py",
             "import app\nimport unittest\nclass Check(unittest.TestCase):\n def test_value(self): self.assertEqual(app.VALUE, 1)\n",
         )
-        result = self.run_project(["app.py", "unused.py"], ["test_app.py"])
+        result = self.run_project(["app.py", "unused.py"], ["app_test.py"])
         self.assertEqual(result.returncode, 1, result.stdout)
         report = self.assert_reports(["app.py", "unused.py"])
         self.assertIn("SF:unused.py\n", report)
@@ -94,10 +203,10 @@ class CoverageRunnerTest(unittest.TestCase):
     def test_no_application_imports_still_produce_zero_coverage(self):
         self.write("unused.py", "VALUE = 1\n")
         self.write(
-            "test_empty.py",
+            "empty_test.py",
             "import unittest\nclass Check(unittest.TestCase):\n def test_ok(self): self.assertTrue(True)\n",
         )
-        result = self.run_project(["unused.py"], ["test_empty.py"])
+        result = self.run_project(["unused.py"], ["empty_test.py"])
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("LH:0", self.assert_reports(["unused.py"]))
 
@@ -108,45 +217,53 @@ class CoverageRunnerTest(unittest.TestCase):
         )
         self.write("payload.txt", "runtime data")
         self.write(
-            "test_first.py",
+            "first_test.py",
             "import app\nimport unittest\nclass First(unittest.TestCase):\n def test_first(self): self.assertEqual(app.first(), 'runtime data')\n",
         )
         self.write(
-            "test_second.py",
+            "second_test.py",
             "import app\nimport unittest\nclass Second(unittest.TestCase):\n def test_second(self): self.assertEqual(app.second(), 'second')\n",
         )
         # Invalid excluded files must not be parsed, measured, or reported.
         for name in [
-            "tools/helper.py",
-            "tests/helper.py",
-            "test_unused.py",
+            "tests/helper_test.py",
+            "unused_test.py",
             "extra_test.py",
         ]:
             self.write(name, "invalid python !!!!")
         result = self.run_project(
             [
                 "app.py",
-                "test_first.py",
-                "test_second.py",
-                "tools/helper.py",
-                "tests/helper.py",
-                "test_unused.py",
+                "first_test.py",
+                "second_test.py",
+                "tests/helper_test.py",
+                "unused_test.py",
                 "extra_test.py",
                 "../external/vendor.py",
             ],
-            ["test_first.py", "test_second.py"],
+            ["first_test.py", "second_test.py"],
         )
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assert_reports(["app.py"])
         self.assertIn("Ran 2 tests", result.stdout)
 
+    def test_explicit_tool_source_is_measured(self):
+        self.write("tools/helper.py", "def value():\n return 42\n")
+        self.write(
+            "helper_test.py",
+            "from tools import helper\nimport unittest\nclass Check(unittest.TestCase):\n def test_value(self): self.assertEqual(helper.value(), 42)\n",
+        )
+        result = self.run_project(["tools/helper.py"], ["helper_test.py"])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assert_reports(["tools/helper.py"])
+
     def test_branch_gap_fails_even_when_all_lines_execute(self):
         self.write("app.py", "def choose(flag):\n if flag:\n  result = 1\n return 1\n")
         self.write(
-            "test_app.py",
+            "app_test.py",
             "import app\nimport unittest\nclass Check(unittest.TestCase):\n def test_true(self): self.assertEqual(app.choose(True), 1)\n",
         )
-        result = self.run_project(["app.py"], ["test_app.py"])
+        result = self.run_project(["app.py"], ["app_test.py"])
         self.assertEqual(result.returncode, 1, result.stdout)
         report = self.assert_reports(["app.py"])
         self.assertIn("LF:4\nLH:4", report)
@@ -155,10 +272,10 @@ class CoverageRunnerTest(unittest.TestCase):
     def test_failing_test_preserves_reports(self):
         self.write("app.py", "VALUE = 1\n")
         self.write(
-            "test_app.py",
+            "app_test.py",
             "import app\nimport unittest\nclass Check(unittest.TestCase):\n def test_wrong(self): self.assertEqual(app.VALUE, 2)\n",
         )
-        result = self.run_project(["app.py"], ["test_app.py"])
+        result = self.run_project(["app.py"], ["app_test.py"])
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assert_reports(["app.py"])
         self.assertIn("FAILED (failures=1)", result.stdout)
@@ -166,17 +283,20 @@ class CoverageRunnerTest(unittest.TestCase):
     def test_invalid_application_source_fails_analysis(self):
         self.write("broken.py", "def broken(:\n")
         self.write(
-            "test_empty.py",
+            "empty_test.py",
             "import unittest\nclass Check(unittest.TestCase):\n def test_ok(self): self.assertTrue(True)\n",
         )
-        result = self.run_project(["broken.py"], ["test_empty.py"])
+        result = self.run_project(["broken.py"], ["empty_test.py"])
         self.assertEqual(result.returncode, 2, result.stdout)
         self.assertIn("Python coverage failed", result.stdout)
         self.assertIn("parse", result.stdout.lower())
         self.assertTrue((self.output / ".coverage").is_file())
 
     def test_empty_application_scope_is_rejected(self):
-        result = self.run_project(["tools/helper.py"], ["test_app.py"])
+        result = self.run_project(
+            ["tests/helper_test.py", "empty_test.py", "../external/vendor.py"],
+            ["app_test.py"],
+        )
         self.assertEqual(result.returncode, 2, result.stdout)
         self.assertIn("no workspace application Python sources", result.stdout)
 
