@@ -2,12 +2,22 @@ load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/ruby:index.bzl", "rb_lint_test")
+load("//tools/lint/ruby:index.bzl", "rb_format_bin", "rb_format_test", "rb_lint_test")
 
 package(default_visibility = ["//src/apis:__subpackages__"])
 
 rb_lint_test(
     name = "api_base_rb_lint_test",
+    srcs = glob(["*.rb"]),
+)
+
+rb_format_test(
+    name = "api_base_rb_format_test",
+    srcs = glob(["*.rb"]),
+)
+
+rb_format_bin(
+    name = "api_base_rb_format_bin",
     srcs = glob(["*.rb"]),
 )
 
