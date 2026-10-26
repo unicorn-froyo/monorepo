@@ -3,6 +3,8 @@
 branch = True
 omit =
     */site-packages/*
+    */tests/*
+    *_test.py
 
 [report]
 # Regexes for lines to exclude from consideration
@@ -12,8 +14,3 @@ exclude_lines =
 
     # Don't complain if non-runnable code isn't run:
     if __name__ == "__main__":
-
-ignore_errors = True
-
-[xml]
-output = coverage.xml

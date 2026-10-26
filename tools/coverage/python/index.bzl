@@ -1,55 +1,53 @@
 """index.bzl provides the py_coverage_test rule"""
 
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@rules_python//python:defs.bzl", "PyInfo")
-load("//tools:utils.bzl", "get_transitive_deps")
 load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
 
 def _py_coverage_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    test_files = " ".join([s.short_path for s in ctx.files.srcs])
-
-    imports = depset(transitive = [dep[PyInfo].imports for dep in ctx.attr.deps]).to_list()
-    python_path = ":".join(["$RUNFILES_DIR/_main"] + ["$RUNFILES_DIR/" + path for path in imports])
-    script_content = "\n".join([
-        "#!/bin/sh",
-        "export PYTHONPATH={python_path}".format(python_path = python_path),
-        "set -e",
-        "{coverage_bin} run --rcfile={config_path} -m unittest {files}".format(
-            coverage_bin = ctx.executable._py_coverage_bin.short_path,
-            files = test_files,
-            config_path = ctx.files._coverage_config[0].short_path,
+    manifest = ctx.actions.declare_file(ctx.label.name + ".sources.json")
+    runtime_deps = ctx.attr.deps + ctx.attr.source_targets
+    sources = depset(transitive = [dep[PyInfo].transitive_sources for dep in ctx.attr.source_targets])
+    imports = depset(transitive = [dep[PyInfo].imports for dep in runtime_deps])
+    ctx.actions.write(manifest, json.encode({
+        "sources": [f.short_path for f in sources.to_list() if f.extension == "py"],
+        "tests": [f.short_path for f in ctx.files.srcs],
+        "imports": imports.to_list(),
+    }))
+    ctx.actions.write(
+        script,
+        "#!/bin/sh\nset -eu\nexec %s --manifest %s --config %s --minimum %s\n" % (
+            shell.quote(ctx.executable._py_coverage_bin.short_path),
+            shell.quote(manifest.short_path),
+            shell.quote(ctx.file._coverage_config.short_path),
+            MINIMUM_LINE_COVERAGE,
         ),
-        "{coverage_bin} report --rcfile={config_path} --fail-under={minimum}".format(
-            coverage_bin = ctx.executable._py_coverage_bin.short_path,
-            config_path = ctx.files._coverage_config[0].short_path,
-            minimum = MINIMUM_LINE_COVERAGE,
-        ),
-    ])
-
-    ctx.actions.write(script, script_content, is_executable = True)
-
+        is_executable = True,
+    )
     runfiles = ctx.runfiles(
-        files = [script] +
-                ctx.files._coverage_py +
-                ctx.files._coverage_config +
-                ctx.files.srcs + ctx.files.deps +
-                ctx.files.data + get_transitive_deps(ctx.attr.deps),
+        files = [manifest, ctx.file._coverage_config] + ctx.files.srcs + ctx.files.data,
+        transitive_files = sources,
     )
     runfiles = runfiles.merge(ctx.attr._py_coverage_bin[DefaultInfo].default_runfiles)
-    for dep in ctx.attr.deps:
+    for dep in runtime_deps + ctx.attr.data:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
-
-    return [DefaultInfo(
-        executable = script,
-        runfiles = runfiles,
-    )]
+    return [DefaultInfo(executable = script, runfiles = runfiles)]
 
 py_coverage_test = rule(
     implementation = _py_coverage_test,
     attrs = {
         "srcs": attr.label_list(
-            allow_files = True,
+            allow_files = [".py"],
             providers = [PyInfo],
+            mandatory = True,
+            allow_empty = False,
+        ),
+        "source_targets": attr.label_list(
+            providers = [PyInfo],
+            mandatory = True,
+            allow_empty = False,
+            doc = "Application libraries/binaries whose workspace Python source closure is measured, including unimported files.",
         ),
         "deps": attr.label_list(
             providers = [PyInfo],
@@ -60,14 +58,11 @@ py_coverage_test = rule(
         "_py_coverage_bin": attr.label(
             default = "//tools/coverage/python:coverage_bin",
             executable = True,
-            cfg = "exec",
-        ),
-        "_coverage_py": attr.label(
-            default = "//third_party/pypi:coverage",
+            cfg = "target",
         ),
         "_coverage_config": attr.label(
             default = "//tools/coverage/python:coverage_config",
-            allow_files = True,
+            allow_single_file = True,
         ),
     },
     test = True,

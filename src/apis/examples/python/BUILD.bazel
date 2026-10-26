@@ -34,6 +34,7 @@ py_coverage_test(
         ":get_widgets_test.py",
         "//src/apis/python:abstract_api_base_test.py",
     ],
+    source_targets = [":get_widgets_example_py_lib"],
     deps = [
         ":get_widgets_example_py_lib",
         "//third_party/pypi:fastapi",

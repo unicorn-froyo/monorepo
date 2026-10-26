@@ -116,9 +116,18 @@ build their existing unit-test targets with instrumentation enabled via a
 configuration transition, then run and collect coverage without requiring a
 separate `bazel coverage` invocation.
 
-Go, Ruby, Rust, and TypeScript LCOV reports are saved in each coverage target's
+All languages' LCOV reports are saved in each coverage target's
 `bazel-testlogs/<package>/<target>/test.outputs/lcov.info`. Go also preserves its
 native block profile as `test.outputs/coverage.out`.
+
+Python also preserves its branch-enabled coverage.py database as
+`test.outputs/.coverage`. Its `py_coverage_test` rule requires `source_targets`
+identifying the application libraries or binaries under test. Their transitive
+workspace Python sources count toward coverage even when never imported;
+external dependencies, test files, and tooling under `tools/` are excluded.
+Reports are written before checking coverage thresholds or test success, so a
+failing test still produces LCOV and raw data. A source-analysis error fails the
+target explicitly and preserves the raw data for diagnosis.
 
 All languages enforce **100% aggregate line coverage per target**, with the
 minimum configured once in `tools/coverage/config.bzl`. Python additionally
