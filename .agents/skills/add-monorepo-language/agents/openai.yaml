@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Monorepo Language"
+  short_description: "Add a language with full Bazel parity"
+  default_prompt: "Use $add-monorepo-language to add a supported language to this repository."
