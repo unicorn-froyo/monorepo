@@ -20,15 +20,14 @@ the integration.
 Repository-maintained public rules and macros must use these exact names:
 
 - `{prefix}_lint_test`
-- `{prefix}_fmt_test`
-- `{prefix}_fmt` for the runnable formatter
+- `{prefix}_format_test`
+- `{prefix}_format_bin` for the runnable formatter
 - `{prefix}_coverage_test`
 - `{prefix}_image` and/or `{prefix}_package` when the integration exports
   language-level OCI or packaging helpers
 
-Use `{prefix}_fmt_bin` only when Bazel requires a separate label for the
-formatter executable. Use `{prefix}_typecheck_test` only when normal Bazel
-builds do not already enforce type safety. Go, Rust, and strict TypeScript
+Use `{prefix}_typecheck_test` only when normal Bazel builds do not already
+enforce type safety. Go, Rust, and strict TypeScript
 compilation satisfy type checking through their normal build targets; Python
 uses a dedicated Pyright rule. A dynamically typed language does not acquire a
 type system solely for name parity.

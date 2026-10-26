@@ -28,7 +28,7 @@ execution status.
 Each language in the monorepo must satisfy the same rule checklist:
 
 - Lint rule
-- Formatter rule (`py_fmt_test` for Python; equivalent formatter test rule per
+- Formatter rule (`py_format_test` for Python; equivalent formatter test rule per
   ecosystem, plus a runnable formatter binary target in Bazel for local use)
 - Type-check capability, either through the normal Bazel build or a dedicated
   rule when the build does not enforce it
@@ -44,11 +44,10 @@ Rust, TypeScript, and Python until each language has the same rule categories
 available in the repository.
 
 Naming pattern: repository rule names should follow the language prefix and
-capability name, e.g. `py_lint_test`, `py_fmt_test`, `py_coverage_test`, and the
+capability name, e.g. `py_lint_test`, `py_format_test`, `py_coverage_test`, and the
 corresponding `rb_*`, `rs_*`, `ts_*`, and `go_*` rules for the other
-ecosystems. Formatter validation rules should be named `{lang}_fmt_test`; the
-corresponding runnable formatter binary should follow the same capability naming,
-e.g. `{lang}_fmt` or `{lang}_fmt_bin` if a separate binary target is required.
+ecosystems. Formatter validation rules should be named `{lang}_format_test`, and
+the corresponding runnable formatter binary should be named `{lang}_format_bin`.
 
 Dependency resolution and lockfile maintenance are ecosystem workflows rather
 than repository rule-parity categories. Use the canonical commands supplied by
@@ -88,7 +87,7 @@ repository explicitly decides to raise every language to the same hardening bar.
 
 In practical terms, this means the monorepo should define and implement rule
 families in a consistent naming pattern across all ecosystems:
-`{lang}_lint_test`, `{lang}_fmt_test`, `{lang}_fmt`, `{lang}_coverage_test`, and
+`{lang}_lint_test`, `{lang}_format_test`, `{lang}_format_bin`, `{lang}_coverage_test`, and
 the equivalent runtime/package rules for each language. When a standalone
 type-check rule is required, it should be named `{lang}_typecheck_test`.
 
@@ -100,11 +99,11 @@ interfaces in use. This is the parity baseline used to scope the implementation.
 
 | Language | Lint | Formatter | Type checking | Coverage | OCI packaging | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Python | `py_lint_test` (`ruff check`) | `py_fmt_test` (`ruff format --check`) | `py_typecheck_test` (proposed) | `py_coverage_test` (`coverage.py`) | OCI image/load targets and Linux execution packaging | Strongest baseline; also the target of explicit quality hardening |
-| Go | `go_lint_test` (proposed; currently `nogo` is used but not standardized by name) | `go_fmt_test` (proposed) | Enforced by normal Go build and test targets | `go_coverage_test` | OCI examples exist; deployment behavior differs | Missing explicit rule naming |
-| Ruby | `rb_lint_test` (proposed; currently `rb_lint_test` exists in wrapper-style naming but not the uniform pattern) | `rb_fmt_test` (proposed) | Intentionally out of scope; no static type system has been adopted | `rb_coverage_test` | OCI examples exist; startup installs gems and native extensions | Startup packaging path is a concrete gap |
-| Rust | `rs_lint_test` (proposed; currently `clippy`/`rustfmt` are used but not standardized by name) | `rs_fmt_test` (proposed) | Enforced by normal Rust build and test targets | `rs_coverage_test` | OCI examples exist; startup rebuilds via `cargo build --release --locked` | Packaging mismatch at runtime is a concrete gap |
-| TypeScript | `ts_lint_test` (wrapper exists, but naming needs to be standardized) | `ts_fmt_test` (proposed) | Enforced by strict `ts_project` builds using `tsc` | `ts_coverage_test` | OCI examples exist | Coverage wrapper flexibility gap, not a missing basic runtime rule |
+| Python | `py_lint_test` (`ruff check`) | `py_format_test` (`ruff format --check`) | `py_typecheck_test` (proposed) | `py_coverage_test` (`coverage.py`) | OCI image/load targets and Linux execution packaging | Strongest baseline; also the target of explicit quality hardening |
+| Go | `go_lint_test` (proposed; currently `nogo` is used but not standardized by name) | `go_format_test` (proposed) | Enforced by normal Go build and test targets | `go_coverage_test` | OCI examples exist; deployment behavior differs | Missing explicit rule naming |
+| Ruby | `rb_lint_test` (proposed; currently `rb_lint_test` exists in wrapper-style naming but not the uniform pattern) | `rb_format_test` (proposed) | Intentionally out of scope; no static type system has been adopted | `rb_coverage_test` | OCI examples exist; startup installs gems and native extensions | Startup packaging path is a concrete gap |
+| Rust | `rs_lint_test` (proposed; currently `clippy`/`rustfmt` are used but not standardized by name) | `rs_format_test` (proposed) | Enforced by normal Rust build and test targets | `rs_coverage_test` | OCI examples exist; startup rebuilds via `cargo build --release --locked` | Packaging mismatch at runtime is a concrete gap |
+| TypeScript | `ts_lint_test` (wrapper exists, but naming needs to be standardized) | `ts_format_test` (proposed) | Enforced by strict `ts_project` builds using `tsc` | `ts_coverage_test` | OCI examples exist | Coverage wrapper flexibility gap, not a missing basic runtime rule |
 
 This matrix makes the main difference visible: the repository already provides a
 complete language runtime contract for Python and coverage wrappers, while other
@@ -145,8 +144,8 @@ package manager used by the monorepo.
 | Rule family | Required naming pattern |
 | --- | --- |
 | Lint | `{lang}_lint_test` |
-| Formatter check | `{lang}_fmt_test` |
-| Formatter binary | `{lang}_fmt` or `{lang}_fmt_bin` |
+| Formatter check | `{lang}_format_test` |
+| Formatter binary | `{lang}_format_bin` |
 | Standalone type-check, when required | `{lang}_typecheck_test` |
 | Coverage | `{lang}_coverage_test` |
 | OCI/package | `{lang}_image`, `{lang}_package`, or equivalent |
@@ -169,8 +168,8 @@ logic across ad hoc directories or the repository root.
 | Rule family | Required rule name | Exists today? | Action |
 | --- | --- | --- | --- |
 | Lint | `py_lint_test` | Yes | Preserve and keep as repo contract |
-| Formatter check | `py_fmt_test` | No | Add `py_fmt_test` using Ruff format check |
-| Formatter binary | `py_fmt` or `py_fmt_bin` | No | Add the runnable formatter binary target |
+| Formatter check | `py_format_test` | Yes | Preserve the Ruff format check |
+| Formatter binary | `py_format_bin` | No | Add the runnable formatter binary target |
 | Type-check | `py_typecheck_test` | No | Add Pyright-backed `py_typecheck_test` |
 | Coverage | `py_coverage_test` | Yes | Improve source targeting and artifact preservation |
 | OCI packaging | `py_image`, `py_package`, or equivalent | Yes | Preserve and validate service packaging |
@@ -180,8 +179,8 @@ logic across ad hoc directories or the repository root.
 | Rule family | Required rule name | Exists today? | Action |
 | --- | --- | --- | --- |
 | Lint | `go_lint_test` | Possibly via `nogo`, but not standardized by name | Standardize the Bazel rule naming and repo contract |
-| Formatter check | `go_fmt_test` | No | Add formatter check rule |
-| Formatter binary | `go_fmt` or `go_fmt_bin` | No | Add runnable formatter binary target |
+| Formatter check | `go_format_test` | No | Add formatter check rule |
+| Formatter binary | `go_format_bin` | No | Add runnable formatter binary target |
 | Type-check capability | Existing Go build and test targets | Yes | Preserve compiler-enforced type checking; do not add a redundant rule |
 | Coverage | `go_coverage_test` | Yes, via wrapper | Preserve current behavior and document line/block handling |
 | OCI packaging | `go_image`, `go_package`, or equivalent | Yes, examples exist | Validate packaging parity |
@@ -191,8 +190,8 @@ logic across ad hoc directories or the repository root.
 | Rule family | Required rule name | Exists today? | Action |
 | --- | --- | --- | --- |
 | Lint | `rb_lint_test` | Potentially via RuboCop wrapper, but not uniform by naming | Standardize naming and repo contract |
-| Formatter check | `rb_fmt_test` | No | Add formatter parity rule |
-| Formatter binary | `rb_fmt` or `rb_fmt_bin` | No | Add runnable formatter binary target |
+| Formatter check | `rb_format_test` | No | Add formatter parity rule |
+| Formatter binary | `rb_format_bin` | No | Add runnable formatter binary target |
 | Type-check capability | None | Intentionally out of scope | Do not adopt a Ruby type system solely for rule-name parity |
 | Coverage | `rb_coverage_test` | Yes | Improve suite/data support and coverage artifact handling |
 | OCI packaging | `rb_image`, `rb_package`, or equivalent | Yes | Remove startup-time gem installation and validate OCI behavior |
@@ -202,8 +201,8 @@ logic across ad hoc directories or the repository root.
 | Rule family | Required rule name | Exists today? | Action |
 | --- | --- | --- | --- |
 | Lint | `rs_lint_test` | Possibly via Clippy/rustfmt path, but not standardized by name | Standardize naming and repo contract |
-| Formatter check | `rs_fmt_test` | Not as a distinct repo rule | Add repo-managed formatter test |
-| Formatter binary | `rs_fmt` or `rs_fmt_bin` | Not as a distinct repo rule | Add runnable formatter binary target |
+| Formatter check | `rs_format_test` | Not as a distinct repo rule | Add repo-managed formatter test |
+| Formatter binary | `rs_format_bin` | Not as a distinct repo rule | Add runnable formatter binary target |
 | Type-check capability | Existing Rust build and test targets | Yes | Preserve compiler-enforced type checking; do not add a redundant rule |
 | Coverage | `rs_coverage_test` | Yes | Preserve current wrapper behavior and document gate semantics |
 | OCI packaging | `rs_image`, `rs_package`, or equivalent | Yes | Package the Bazel-built server directly and remove startup rebuilds |
@@ -213,8 +212,8 @@ logic across ad hoc directories or the repository root.
 | Rule family | Required rule name | Exists today? | Action |
 | --- | --- | --- | --- |
 | Lint | `ts_lint_test` | Yes via ESLint wrapper, but not fully uniform | Standardize naming and repo contract |
-| Formatter check | `ts_fmt_test` | No | Add formatter rule and test |
-| Formatter binary | `ts_fmt` or `ts_fmt_bin` | No | Add runnable formatter binary target |
+| Formatter check | `ts_format_test` | No | Add formatter rule and test |
+| Formatter binary | `ts_format_bin` | No | Add runnable formatter binary target |
 | Type-check capability | Existing strict `ts_project` targets using `tsc` | Yes | Preserve strict compiler checking; do not add a redundant rule |
 | Coverage | `ts_coverage_test` | Yes | Broaden wrapper flexibility for multiple entry points and runtime data |
 | OCI packaging | `ts_image`, `ts_package`, or equivalent | Yes | Keep OCI examples aligned with repo contract |
