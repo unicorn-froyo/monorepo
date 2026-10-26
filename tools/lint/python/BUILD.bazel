@@ -1,5 +1,6 @@
 load("@npm//third_party/npm:pyright/package_json.bzl", pyright = "bin")
-load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load(":index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
@@ -46,23 +47,19 @@ py_binary(
     srcs = ["typecheck_bin.py"],
 )
 
-py_test(
+py_library(
+    name = "quality_tools",
+    srcs = [
+        "format_bin.py",
+        "ruff_bin.py",
+        "typecheck_bin.py",
+    ],
+    deps = ["//third_party/pypi:ruff"],
+)
+
+py_coverage_test(
     name = "quality_checks_test",
     srcs = ["quality_checks_test.py"],
-    args = [
-        "--ruff",
-        "$(location :ruff_bin)",
-        "--formatter",
-        "$(location :py_format_bin)",
-        "--pyright",
-        "$(location :pyright_bin)",
-        "--runner",
-        "$(location :typecheck_bin)",
-        "--ruff_config",
-        "$(location :ruff.toml)",
-        "--pyright_config",
-        "$(location :pyrightconfig.json)",
-    ],
     data = [
         ":py_format_bin",
         ":pyright_bin",
@@ -71,6 +68,8 @@ py_test(
         ":ruff_bin",
         ":typecheck_bin",
     ],
+    source_targets = [":quality_tools"],
+    deps = [":quality_tools"],
 )
 
 py_binary(

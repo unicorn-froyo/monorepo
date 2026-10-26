@@ -30,7 +30,7 @@ def _py_coverage_test(ctx):
         transitive_files = sources,
     )
     runfiles = runfiles.merge(ctx.attr._py_coverage_bin[DefaultInfo].default_runfiles)
-    for dep in runtime_deps:
+    for dep in runtime_deps + ctx.attr.data:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
     return [DefaultInfo(executable = script, runfiles = runfiles)]
 
