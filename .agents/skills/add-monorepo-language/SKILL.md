@@ -44,6 +44,27 @@ Place repository rule implementations under
 `index.bzl`. Individual BUILD target names may describe their component, but
 must call the consistently named public macro for that capability.
 
+## Coverage output contract
+
+Every `{prefix}_coverage_test` must emit a standard LCOV report named
+`lcov.info` under `$TEST_UNDECLARED_OUTPUTS_DIR`. A console summary or a
+tool-specific HTML, JSON, database, or profile file does not replace this
+required artifact; those formats may be retained as additional outputs.
+
+Generate portable `SF:` entries with workspace-relative, forward-slash paths.
+Do not expose sandbox paths or include external dependencies, generated tooling,
+or test sources in the measured application scope. Reject an empty report or a
+report with no intended application sources instead of allowing an
+uninstrumented test to pass.
+
+Write `lcov.info` before enforcing the shared coverage threshold so the report
+is preserved when coverage is insufficient. When the underlying tool can still
+produce coverage after a test failure, preserve the report before propagating
+the failing status. Coverage-rule tests must verify that the LCOV artifact is
+parseable, uses portable source paths, contains the intended sources, and
+remains available on threshold failure. Also test tool-specific raw artifacts
+when the rule promises to expose them.
+
 ## Integration workflow
 
 1. Inventory the comparator language's module/toolchain setup, third-party
