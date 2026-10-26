@@ -1,4 +1,5 @@
 """Tests for the example FastAPI widgets service."""
+
 from unittest import TestCase, main
 
 from fastapi.testclient import TestClient

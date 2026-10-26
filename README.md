@@ -108,7 +108,7 @@ Lint checks run as part of the normal build/test workflow:
 | Language | Lint tool | Coverage tool |
 | --- | --- | --- |
 | Go | SDK analyzers via `go_lint` (nogo, checked during builds) | Native `rules_go` instrumentation |
-| Python | Ruff via `py_lint_test` | coverage.py via `py_coverage_test` |
+| Python | Ruff via `py_lint_test` and `py_format_test`; Pyright via `py_typecheck_test` | coverage.py via `py_coverage_test` |
 | Ruby | RuboCop via `rb_lint_test` | SimpleCov via `rb_coverage_test` |
 | Rust | Clippy and rustfmt via `rs_lint_test` | Native LLVM instrumentation via `rules_rust` |
 | TypeScript | ESLint via `ts_lint_test` | c8/V8 via `ts_coverage_test`, mapped to TypeScript sources |
@@ -116,6 +116,12 @@ Lint checks run as part of the normal build/test workflow:
 Reusable wrappers live under `tools/lint/<language>/index.bzl` and
 `tools/coverage/<language>/index.bzl`. Dependencies are pinned in the ecosystem
 lockfiles under `third_party/`; no globally installed linters are required.
+
+Python app and tooling sources are also checked with `ruff format --check` and
+Pyright's standard checks for Python 3.14 during `bazelisk test //...`.
+`py_typecheck_test` accepts Python `srcs` and declared `deps`; dependency import
+paths come from Bazel's Python providers and Pyright uses the hermetic Python
+interpreter. Pyright is pinned in the npm lockfile alongside the Node tooling.
 
 All languages' coverage targets run during `bazelisk test //...` and are
 discoverable as test rules (not just test suites). Go and Rust coverage rules

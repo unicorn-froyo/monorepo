@@ -1,4 +1,5 @@
 """Container entrypoint for the widgets API."""
+
 import uvicorn
 
 if __name__ == "__main__":

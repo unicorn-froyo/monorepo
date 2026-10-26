@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/python:index.bzl", "py_lint_test")
+load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
 package(default_visibility = ["//src/apis:__subpackages__"])
 
@@ -37,4 +37,15 @@ py_coverage_test(
 py_lint_test(
     name = "api_base_py_lint_test",
     srcs = glob(["*.py"]),
+)
+
+py_format_test(
+    name = "api_base_py_format_test",
+    srcs = glob(["*.py"]),
+)
+
+py_typecheck_test(
+    name = "api_base_py_typecheck_test",
+    srcs = glob(["*.py"]),
+    deps = [":api_base_py_lib"],
 )
