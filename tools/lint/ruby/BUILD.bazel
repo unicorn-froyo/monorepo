@@ -1,6 +1,8 @@
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
-exports_files([".rubocop.yml"])
+exports_files([
+    ".rubocop.yml",
+])
 
 filegroup(
     name = "config",

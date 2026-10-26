@@ -1,9 +1,11 @@
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_oci//oci:defs.bzl", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
+load("//tools/image/ruby:index.bzl", "rb_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/ruby:index.bzl", "rb_lint_test")
+load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test")
+load("//tools/package/ruby:index.bzl", "rb_package")
 
 rb_coverage_test(
     name = "get_widgets_example_rb_coverage_test",
@@ -13,6 +15,14 @@ rb_coverage_test(
 
 rb_lint_test(
     name = "get_widgets_example_rb_lint_test",
+    srcs = glob([
+        "*.rb",
+        "*.ru",
+    ]),
+)
+
+rb_format_test(
+    name = "get_widgets_example_rb_format_test",
     srcs = glob([
         "*.rb",
         "*.ru",
@@ -54,57 +64,39 @@ pkg_tar(
     srcs = [
         "config.ru",
         "get_widgets.rb",
-        "server.sh",
     ],
     package_dir = "/app/src/apis/examples/ruby",
     strip_prefix = ".",
 )
 
-pkg_tar(
+# A native Linux worker installs the bundle, including source-gem extensions,
+# before packaging. Incompatible image targets give an explicit Linux platform
+# diagnostic when requested from macOS; ordinary build //... remains portable.
+rb_package(
     name = "gems_layer",
-    srcs = ["@bundle"],
-    package_dir = "/usr/local/bundle",
-    strip_prefix = "vendor/bundle",
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
-pkg_tar(
-    name = "linux_gem_layer",
-    srcs = select({
-        "@platforms//cpu:arm64": ["@bundle//:third_party/ruby/vendor/cache/nokogiri-1.19.4-aarch64-linux-gnu.gem"],
-        "@platforms//cpu:x86_64": ["@bundle//:third_party/ruby/vendor/cache/nokogiri-1.19.4-x86_64-linux-gnu.gem"],
-    }),
-    package_dir = "/usr/local/bundle/external/rules_ruby++ruby+bundle/vendor/bundle/ruby/4.0.0/cache",
-    remap_paths = {
-        "external/rules_ruby++ruby+bundle/third_party/ruby/vendor/cache": ".",
-    },
-)
-
-oci_image(
+rb_image(
     name = "get_widgets_example_oci",
-    base = select({
-        "@platforms//cpu:arm64": "@ruby_base_linux_arm64_v8",
-        "@platforms//cpu:x86_64": "@ruby_base_linux_amd64",
-    }),
     entrypoint = [
-        "/bin/sh",
-        "/app/src/apis/examples/ruby/server.sh",
+        "ruby",
+        "-rbundler/setup",
+        "-e",
+        "load Gem.bin_path(\"puma\", \"puma\")",
+        "--",
+        "-b",
+        "tcp://0.0.0.0:8080",
+        "src/apis/examples/ruby/config.ru",
     ],
-    env = {
-        "BUNDLE_CACHE_PATH": "/usr/local/bundle/external/rules_ruby++ruby+bundle/vendor/bundle/ruby/4.0.0/cache",
-        "BUNDLE_FROZEN": "true",
-        "BUNDLE_GEMFILE": "/app/third_party/ruby/Gemfile",
-        "BUNDLE_PATH": "/tmp/bundle",
-        "RAILS_ENV": "production",
-    },
     tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
     tars = [
         ":gems_layer",
-        ":linux_gem_layer",
         "//third_party/ruby:gemfile_layer",
         "//src/apis/ruby:api_base_layer",
         ":application_layer",
     ],
-    workdir = "/app",
 )
 
 oci_load(
@@ -112,4 +104,5 @@ oci_load(
     image = ":get_widgets_example_oci",
     repo_tags = ["get-widgets-ruby:latest"],
     tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
 )

@@ -52,6 +52,13 @@ docker run --rm -p 8080:8080 get-widgets-typescript:latest
 
 All examples serve `GET /widgets` on port 8080.
 
+Build the Ruby image on a Linux worker matching the desired image architecture
+(amd64 or arm64). Its Bazel bundle action compiles native gem extensions using
+Ruby 4.0.7, matching the pinned runtime image. The image contains the installed
+bundle at `/usr/local/bundle`; startup only executes Puma and performs no gem
+installation. An explicit Ruby image build on macOS fails with a Linux platform
+compatibility diagnostic. Normal builds and tests remain available on macOS.
+
 All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
 including consistent security headers on HTTP responses and HTTPS-only HSTS.
 
@@ -96,7 +103,7 @@ Lint checks run as part of the normal build/test workflow:
 | --- | --- | --- |
 | Go | SDK analyzers via `go_lint` (nogo, checked during builds) | Native `rules_go` instrumentation |
 | Python | Ruff via `py_lint_test` and `py_format_test`; Pyright via `py_typecheck_test` | coverage.py via `py_coverage_test` |
-| Ruby | RuboCop via `rb_lint_test` | SimpleCov via `rb_coverage_test` |
+| Ruby | RuboCop via `rb_lint_test`, `rb_format_test`, and `rb_format_bin` | SimpleCov line coverage via `rb_coverage_test` |
 | Rust | Clippy and rustfmt via `rs_lint_test` | Native LLVM instrumentation via `rules_rust` |
 | TypeScript | ESLint via `ts_lint_test` | c8/V8 via `ts_coverage_test`, mapped to TypeScript sources |
 
@@ -109,6 +116,11 @@ Pyright's standard checks for Python 3.14 during `bazelisk test //...`.
 `py_typecheck_test` accepts Python `srcs` and declared `deps`; dependency import
 paths come from Bazel's Python providers and Pyright uses the hermetic Python
 interpreter. Pyright is pinned in the npm lockfile alongside the Node tooling.
+
+Ruby intentionally has no separate type-check target because the repository has
+not adopted a static type system for Ruby. Ruby OCI services use `rb_package`
+and `rb_image` to package Bazel-installed gems; containers do not install gems
+at startup.
 
 All languages' coverage targets run during `bazelisk test //...` and are
 discoverable as test rules (not just test suites). Go and Rust coverage rules
