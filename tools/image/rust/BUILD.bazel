@@ -1,0 +1,11 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+bzl_lint_test(
+    name = "rust_image_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)
+
+exports_files(["index.bzl"])

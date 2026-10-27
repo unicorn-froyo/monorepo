@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools.coverage.native import coverage_bin
-from tools.coverage.native.coverage_bin import enforce_threshold, go_report
+from tools.coverage.native.coverage_bin import enforce_threshold, go_report, validate_sources
 
 
 class GoReportTest(unittest.TestCase):
@@ -68,6 +68,27 @@ class ThresholdTest(unittest.TestCase):
             enforce_threshold("LF:10\nLH:11\n", 80)
 
 
+class SourceValidationTest(unittest.TestCase):
+    def test_accepts_workspace_relative_application_source(self):
+        validate_sources("SF:tools/example/main.go\nLF:1\nLH:1\n", "tools/example/")
+
+    def test_rejects_report_without_sources(self):
+        with self.assertRaisesRegex(RuntimeError, "no source files"):
+            validate_sources("LF:0\nLH:0\n", "tools/example/")
+
+    def test_rejects_source_outside_target_package(self):
+        with self.assertRaisesRegex(RuntimeError, "no sources under tools/example/"):
+            validate_sources("SF:src/apis/example.go\n", "tools/example/")
+
+    def test_rejects_absolute_source(self):
+        with self.assertRaisesRegex(RuntimeError, "non-portable"):
+            validate_sources("SF:/sandbox/tools/example/main.go\n", "tools/example/")
+
+    def test_rejects_test_source(self):
+        with self.assertRaisesRegex(RuntimeError, "test sources"):
+            validate_sources("SF:tools/example/main_test.go\n", "tools/example/")
+
+
 class RunnerTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -85,10 +106,19 @@ class RunnerTest(unittest.TestCase):
         report = "SF:src/apis/example.go\nDA:1,1\nLF:1\nLH:1\nend_of_record\n"
         with (
             patch.dict(os.environ, self.environment, clear=True),
-            patch.object(sys, "argv", ["coverage_bin", "go", "test-bin", "{}", "100"]),
-            patch.object(coverage_bin.subprocess, "run") as run,
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess([], 0),
+            ) as run,
             patch.object(coverage_bin, "go_report", return_value=report) as convert,
             patch.object(coverage_bin, "enforce_threshold") as enforce,
+            patch.object(Path, "exists", return_value=True),
             patch.object(Path, "read_text", return_value="module example.org/repo\n"),
         ):
             coverage_bin.main()
@@ -117,6 +147,7 @@ class RunnerTest(unittest.TestCase):
                     "test-bin",
                     "{}",
                     "100",
+                    "src/apis/",
                     "llvm-cov",
                     "llvm-profdata",
                 ],
@@ -143,6 +174,7 @@ class RunnerTest(unittest.TestCase):
                     "test-bin",
                     "{}",
                     "100",
+                    "src/apis/",
                     "llvm-cov",
                     "llvm-profdata",
                 ],
@@ -155,11 +187,102 @@ class RunnerTest(unittest.TestCase):
     def test_runner_rejects_report_without_api_sources(self):
         with (
             patch.dict(os.environ, self.environment, clear=True),
-            patch.object(sys, "argv", ["coverage_bin", "go", "test-bin", "{}", "100"]),
-            patch.object(coverage_bin.subprocess, "run"),
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess([], 0),
+            ),
             patch.object(coverage_bin, "go_report", return_value="SF:vendor/example.go\n"),
+            patch.object(Path, "exists", return_value=True),
             patch.object(Path, "read_text", return_value="module example.org/repo\n"),
-            self.assertRaisesRegex(RuntimeError, "no API source files"),
+            self.assertRaisesRegex(RuntimeError, "no sources under src/apis/"),
+        ):
+            coverage_bin.main()
+
+    def test_go_runner_preserves_lcov_before_propagating_test_failure(self):
+        report = "SF:src/apis/example.go\nDA:1,1\nLF:1\nLH:1\nend_of_record\n"
+        with (
+            patch.dict(os.environ, self.environment, clear=True),
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess(["test-bin"], 1),
+            ),
+            patch.object(Path, "exists", return_value=True),
+            patch.object(Path, "read_text", return_value="module example.org/repo\n"),
+            patch.object(coverage_bin, "go_report", return_value=report),
+            self.assertRaises(coverage_bin.subprocess.CalledProcessError),
+        ):
+            coverage_bin.main()
+
+        self.assertEqual((self.output / "lcov.info").read_text(), report)
+
+    def test_go_runner_preserves_lcov_on_threshold_failure(self):
+        report = "SF:src/apis/example.go\nDA:1,0\nLF:1\nLH:0\nend_of_record\n"
+        with (
+            patch.dict(os.environ, self.environment, clear=True),
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess(["test-bin"], 0),
+            ),
+            patch.object(Path, "exists", return_value=True),
+            patch.object(Path, "read_text", return_value="module example.org/repo\n"),
+            patch.object(coverage_bin, "go_report", return_value=report),
+            self.assertRaisesRegex(RuntimeError, "below 100%"),
+        ):
+            coverage_bin.main()
+
+        self.assertEqual((self.output / "lcov.info").read_text(), report)
+
+    def test_go_runner_propagates_failure_without_profile(self):
+        with (
+            patch.dict(os.environ, self.environment, clear=True),
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess(["test-bin"], 1),
+            ),
+            patch.object(Path, "exists", return_value=False),
+            self.assertRaises(coverage_bin.subprocess.CalledProcessError),
+        ):
+            coverage_bin.main()
+
+    def test_go_runner_rejects_missing_profile_after_success(self):
+        with (
+            patch.dict(os.environ, self.environment, clear=True),
+            patch.object(
+                sys,
+                "argv",
+                ["coverage_bin", "go", "test-bin", "{}", "100", "src/apis/"],
+            ),
+            patch.object(
+                coverage_bin.subprocess,
+                "run",
+                return_value=coverage_bin.subprocess.CompletedProcess(["test-bin"], 0),
+            ),
+            patch.object(Path, "exists", return_value=False),
+            self.assertRaisesRegex(RuntimeError, "no coverage profile"),
         ):
             coverage_bin.main()
 

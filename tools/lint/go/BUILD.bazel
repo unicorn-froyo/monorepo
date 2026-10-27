@@ -1,7 +1,23 @@
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load(":index.bzl", "go_lint")
+load(":index.bzl", "go_format_failure_test", "go_format_test", "go_lint_analyzer")
 
-go_lint(name = "go_lint")
+go_lint_analyzer(name = "go_lint_analyzer")
+
+go_format_test(
+    name = "formatted_fixture_test",
+    srcs = ["testdata/formatted.go"],
+)
+
+go_format_test(
+    name = "unformatted_fixture_test",
+    srcs = ["testdata/unformatted.go"],
+    tags = ["manual"],
+)
+
+go_format_failure_test(
+    name = "go_format_negative_test",
+    formatter = ":unformatted_fixture_test",
+)
 
 bzl_lint_test(
     name = "go_lint_bzl_lint_test",

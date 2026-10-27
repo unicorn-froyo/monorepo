@@ -1,10 +1,11 @@
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_load")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/image/rust:index.bzl", "rs_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/rust:index.bzl", "rs_lint_test")
+load("//tools/lint/rust:index.bzl", "rs_format_bin", "rs_format_test", "rs_lint_test")
+load("//tools/package/rust:index.bzl", "rs_package")
 
 rs_coverage_test(
     name = "get_widgets_example_rs_coverage_test",
@@ -14,10 +15,26 @@ rs_coverage_test(
 rs_lint_test(
     name = "get_widgets_example_rs_lint_test",
     targets = [
+        ":get_widgets_example_image_smoke_test",
         ":get_widgets_example_rs_lib",
         ":get_widgets_example_rs_test",
         ":server",
     ],
+)
+
+rs_format_test(
+    name = "get_widgets_example_rs_format_test",
+    targets = [
+        ":get_widgets_example_image_smoke_test",
+        ":get_widgets_example_rs_lib",
+        ":get_widgets_example_rs_test",
+        ":server",
+    ],
+)
+
+rs_format_bin(
+    name = "get_widgets_example_rs_format_bin",
+    srcs = glob(["*.rs"]),
 )
 
 exports_files(["Cargo.toml"])
@@ -67,35 +84,18 @@ rust_test(
     ],
 )
 
-pkg_tar(
+rs_package(
     name = "application_layer",
-    srcs = [
-        "Cargo.toml",
-        "get_widgets.rs",
-        "server.rs",
-        "server.sh",
-    ],
-    package_dir = "/app/src/apis/examples/rust",
-    strip_prefix = ".",
+    binary = ":server",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
-oci_image(
+rs_image(
     name = "get_widgets_example_oci",
-    base = select({
-        "@platforms//cpu:arm64": "@rust_base_linux_arm64_v8",
-        "@platforms//cpu:x86_64": "@rust_base_linux_amd64",
-    }),
-    entrypoint = [
-        "/bin/sh",
-        "/app/src/apis/examples/rust/server.sh",
-    ],
     tags = ["manual"],
-    tars = [
-        "//src/apis/rust:api_base_layer",
-        "//third_party/rust:cargo_lock_layer",
-        ":application_layer",
-    ],
-    workdir = "/app/src/apis/examples/rust",
+    target_compatible_with = ["@platforms//os:linux"],
+    tars = [":application_layer"],
 )
 
 oci_load(
@@ -103,6 +103,18 @@ oci_load(
     image = ":get_widgets_example_oci",
     repo_tags = ["get-widgets-rust:latest"],
     tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+rust_test(
+    name = "get_widgets_example_image_smoke_test",
+    srcs = ["image_smoke_test.rs"],
+    edition = "2021",
+    tags = [
+        "local",
+        "manual",
+        "requires-docker",
+    ],
 )
 
 deploy_api(
