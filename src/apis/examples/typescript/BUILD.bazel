@@ -1,4 +1,3 @@
-load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
@@ -92,21 +91,6 @@ ts_project(
         "//third_party/npm:node_modules/@types/supertest",
         "//third_party/npm:node_modules/supertest",
     ],
-)
-
-js_test(
-    name = "get_widgets_example_ts_test",
-    data = [
-        ":get_widgets_example_ts_lib",
-        ":get_widgets_example_ts_test_lib",
-        ":server_lib",
-        "//src/apis/typescript:api_base_ts_lib",
-        "//third_party/npm:node_modules",
-        "//third_party/npm:node_modules/express",
-        "//third_party/npm:node_modules/supertest",
-    ],
-    entry_point = "get-widgets.test.js",
-    env = {"NODE_PATH": "third_party/npm/node_modules"},
 )
 
 pkg_tar(

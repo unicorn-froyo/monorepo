@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { applicationSources, run, validateLcov } from "./coverage-runner.mjs";
+import {
+  applicationSources,
+  runCoverage,
+  validateLcov,
+} from "./coverage-runner.js";
+import { main } from "./coverage-runner-main.js";
 
 test("selects portable application sources and rejects an empty scope", () => {
   assert.deepEqual(
@@ -17,36 +22,50 @@ test("selects portable application sources and rejects an empty scope", () => {
     ]),
     ["tools/example.ts"],
   );
-  assert.throws(() => applicationSources(["only.test.ts"]), /no workspace application/);
+  assert.throws(
+    () => applicationSources(["only.test.ts"]),
+    /no workspace application/,
+  );
 });
 
-test("validates parseable, portable, exact LCOV source scope", () => {
+test("validates portable LCOV source scope and rejects empty reports", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ts-lcov-"));
   const report = path.join(directory, "lcov.info");
   fs.writeFileSync(report, "TN:\nSF:tools/example.ts\nDA:1,1\nend_of_record\n");
   validateLcov(report, ["tools/example.ts"]);
-  assert.throws(() => validateLcov(report, ["tools/missing.ts"]), /source scope mismatch/);
+  assert.throws(
+    () => validateLcov(report, ["tools/missing.ts"]),
+    /source scope mismatch/,
+  );
   fs.writeFileSync(report, "TN:\nSF:/sandbox/example.ts\nend_of_record\n");
-  assert.throws(() => validateLcov(report, ["tools/example.ts"]), /not portable/);
+  assert.throws(
+    () => validateLcov(report, ["tools/example.ts"]),
+    /not portable/,
+  );
   fs.writeFileSync(report, "");
   assert.throws(() => validateLcov(report, ["tools/example.ts"]), /no records/);
 });
 
-test("preserves and validates LCOV before returning a threshold failure", () => {
+test("preserves LCOV before returning a coverage threshold failure", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ts-coverage-"));
   const output = path.join(directory, "reports");
   const scratch = path.join(directory, "scratch");
-  const calls = [];
-  const spawn = (_executable, args) => {
-    calls.push(args);
+  const spawn = (_executable: string, args: readonly string[]) => {
+    assert.ok(args.includes("--all"));
+    assert.ok(args.includes("--include=tools/unused.js"));
     fs.mkdirSync(output, { recursive: true });
     fs.writeFileSync(
       path.join(output, "lcov.info"),
       "TN:\nSF:tools/unused.ts\nDA:1,0\nLF:1\nLH:0\nend_of_record\n",
     );
-    return { status: 1 };
+    return {
+      status: 1,
+      signal: null,
+      output: [null, Buffer.alloc(0), Buffer.alloc(0)],
+      pid: 1,
+    };
   };
-  const status = run(
+  const result = runCoverage(
     [
       "--c8",
       "c8",
@@ -58,10 +77,13 @@ test("preserves and validates LCOV before returning a threshold failure", () => 
       "tools/unused.ts",
     ],
     { TEST_UNDECLARED_OUTPUTS_DIR: output, TEST_TMPDIR: scratch },
-    spawn,
+    spawn as never,
   );
-  assert.equal(status, 1);
+  assert.equal(result.status, 1);
   assert.ok(fs.existsSync(path.join(output, "lcov.info")));
-  assert.ok(calls[0].includes("--all"));
-  assert.ok(calls[0].includes("--include=tools/unused.js"));
+});
+
+test("main reports invalid runner inputs", () => {
+  assert.equal(main([]), 2);
+  assert.equal(main(["--unknown", "value"]), 2);
 });

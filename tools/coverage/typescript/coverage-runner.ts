@@ -1,11 +1,15 @@
-#!/usr/bin/env node
-
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
-export function applicationSources(candidates) {
+export interface CoverageOptions {
+  c8: string;
+  entryPoint: string;
+  minimum: string;
+  sources: string[];
+}
+
+export function applicationSources(candidates: string[]): string[] {
   const sources = [...new Set(candidates)].sort().filter((candidate) => {
     const normalized = candidate.replaceAll("\\", "/");
     return (
@@ -18,22 +22,33 @@ export function applicationSources(candidates) {
     );
   });
   if (sources.length === 0) {
-    throw new Error("srcs contains no workspace application TypeScript sources");
+    throw new Error(
+      "srcs contains no workspace application TypeScript sources",
+    );
   }
   return sources;
 }
 
-export function validateLcov(report, expectedSources) {
+export function validateLcov(report: string, expectedSources: string[]): void {
   if (!fs.existsSync(report)) throw new Error(`c8 did not produce ${report}`);
   const text = fs.readFileSync(report, "utf8");
-  const records = text.split("end_of_record").filter((record) => record.trim() !== "");
+  const records = text
+    .split("end_of_record")
+    .filter((record) => record.trim() !== "");
   if (records.length === 0) throw new Error("lcov.info contains no records");
-  const actual = new Set();
+  const actual = new Set<string>();
   for (const record of records) {
-    const sourceLines = record.split("\n").filter((line) => line.startsWith("SF:"));
-    if (sourceLines.length !== 1) throw new Error("each LCOV record must contain exactly one SF entry");
-    const source = sourceLines[0].slice(3);
-    if (path.isAbsolute(source) || source.includes("\\") || source.split("/").includes("..")) {
+    const sourceLines = record
+      .split("\n")
+      .filter((line) => line.startsWith("SF:"));
+    if (sourceLines.length !== 1)
+      throw new Error("each LCOV record must contain exactly one SF entry");
+    const source = sourceLines[0]!.slice(3);
+    if (
+      path.isAbsolute(source) ||
+      source.includes("\\") ||
+      source.split("/").includes("..")
+    ) {
       throw new Error(`LCOV source path is not portable: ${source}`);
     }
     actual.add(source);
@@ -48,8 +63,13 @@ export function validateLcov(report, expectedSources) {
   }
 }
 
-function parseArguments(argv) {
-  const options = { sources: [] };
+function parseArguments(argv: string[]): CoverageOptions {
+  const options: CoverageOptions = {
+    sources: [],
+    c8: "",
+    entryPoint: "",
+    minimum: "",
+  };
   for (let index = 0; index < argv.length; index += 2) {
     const flag = argv[index];
     const value = argv[index + 1];
@@ -66,15 +86,19 @@ function parseArguments(argv) {
   return options;
 }
 
-export function run(argv, environment = process.env, spawn = spawnSync) {
+export function runCoverage(
+  argv: string[],
+  environment: NodeJS.ProcessEnv = process.env,
+  spawn: typeof spawnSync = spawnSync,
+): SpawnSyncReturns<Buffer> {
   const options = parseArguments(argv);
   const sources = applicationSources(options.sources);
   const output = environment.TEST_UNDECLARED_OUTPUTS_DIR;
   const scratch = environment.TEST_TMPDIR;
-  if (!output || !scratch) throw new Error("Bazel test output directories are required");
+  if (!output || !scratch)
+    throw new Error("Bazel test output directories are required");
   fs.mkdirSync(output, { recursive: true });
-  const report = path.join(output, "lcov.info");
-  const c8Arguments = [
+  const args = [
     "--all",
     `--reports-dir=${output}`,
     `--temp-directory=${path.join(scratch, "c8")}`,
@@ -90,17 +114,11 @@ export function run(argv, environment = process.env, spawn = spawnSync) {
     "node",
     options.entryPoint,
   ];
-  const result = spawn(options.c8, c8Arguments, { env: environment, stdio: "inherit" });
-  validateLcov(report, sources);
+  const result = spawn(options.c8, args, {
+    env: environment,
+    stdio: "inherit",
+  });
+  validateLcov(path.join(output, "lcov.info"), sources);
   if (result.error) throw result.error;
-  return result.status ?? 1;
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    process.exitCode = run(process.argv.slice(2));
-  } catch (error) {
-    console.error(`TypeScript coverage failed: ${error.message}`);
-    process.exitCode = 2;
-  }
+  return result;
 }
