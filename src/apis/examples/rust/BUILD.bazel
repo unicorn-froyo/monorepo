@@ -1,6 +1,5 @@
 load("@rules_oci//oci:defs.bzl", "oci_load")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
-load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/image/rust:index.bzl", "rs_image")
@@ -16,6 +15,7 @@ rs_coverage_test(
 rs_lint_test(
     name = "get_widgets_example_rs_lint_test",
     targets = [
+        ":get_widgets_example_image_smoke_test",
         ":get_widgets_example_rs_lib",
         ":get_widgets_example_rs_test",
         ":server",
@@ -25,6 +25,7 @@ rs_lint_test(
 rs_format_test(
     name = "get_widgets_example_rs_format_test",
     targets = [
+        ":get_widgets_example_image_smoke_test",
         ":get_widgets_example_rs_lib",
         ":get_widgets_example_rs_test",
         ":server",
@@ -105,15 +106,15 @@ oci_load(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
-sh_test(
+rust_test(
     name = "get_widgets_example_image_smoke_test",
-    srcs = ["image_smoke_test.sh"],
+    srcs = ["image_smoke_test.rs"],
+    edition = "2021",
     tags = [
         "local",
         "manual",
         "requires-docker",
     ],
-    target_compatible_with = ["@platforms//os:linux"],
 )
 
 deploy_api(
