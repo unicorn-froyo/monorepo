@@ -47,8 +47,27 @@ def enforce_threshold(report: str, minimum: float) -> None:
         raise RuntimeError(f"Line coverage {percentage:.2f}% is below {minimum:g}%")
 
 
+def validate_sources(report: str, source_prefix: str) -> None:
+    """Require portable application sources from the package under test."""
+    sources = [line[3:] for line in report.splitlines() if line.startswith("SF:")]
+    if not sources:
+        raise RuntimeError("Coverage report contains no source files")
+    invalid = [
+        source
+        for source in sources
+        if source.startswith("/")
+        or "\\" in source
+        or ".." in Path(source).parts
+        or source.endswith("_test.go")
+    ]
+    if invalid:
+        raise RuntimeError(f"Coverage report contains non-portable or test sources: {invalid}")
+    if not any(source.startswith(source_prefix) for source in sources):
+        raise RuntimeError(f"Coverage report contains no sources under {source_prefix}")
+
+
 def main() -> None:
-    language, binary, encoded_env, minimum, *tools = sys.argv[1:]
+    language, binary, encoded_env, minimum, source_prefix, *tools = sys.argv[1:]
     binary = str(Path(binary).absolute())
     output = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"])
     output.mkdir(parents=True, exist_ok=True)
@@ -58,9 +77,15 @@ def main() -> None:
     env.update(json.loads(encoded_env))
     # This runner owns collection, including when invoked by `bazel coverage`.
     env.pop("COVERAGE_OUTPUT_FILE", None)
+    test_result = None
     if language == "go":
         profile = output / "coverage.out"
-        subprocess.run([binary, f"-test.coverprofile={profile}"], env=env, check=True)
+        test_result = subprocess.run(
+            [binary, f"-test.coverprofile={profile}"], env=env, check=False
+        )
+        if not profile.exists():
+            test_result.check_returncode()
+            raise RuntimeError("Go test produced no coverage profile")
         module = Path("third_party/golang/go.mod").read_text().splitlines()[0].split()[1]
         report = go_report(profile, module)
     else:
@@ -85,11 +110,11 @@ def main() -> None:
             ],
             text=True,
         )
-    # Reject empty reports rather than passing a silently uninstrumented test.
-    if not any("src/apis/" in line for line in report.splitlines() if line.startswith("SF:")):
-        raise RuntimeError("Coverage report contains no API source files")
+    validate_sources(report, source_prefix)
     (output / "lcov.info").write_text(report)
     print(f"{language} LCOV coverage saved to {output / 'lcov.info'}")
+    if test_result is not None:
+        test_result.check_returncode()
     enforce_threshold(report, float(minimum))
 
 
