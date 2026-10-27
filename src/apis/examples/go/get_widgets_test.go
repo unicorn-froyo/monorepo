@@ -35,21 +35,31 @@ func TestMainEntrypoint(t *testing.T) {
 	}
 }
 
-func TestHTTPSHeaders(t *testing.T) {
-	for _, path := range []string{"/widgets", "/missing"} {
-		request := httptest.NewRequest(http.MethodGet, "https://example.com"+path, nil)
-		response := httptest.NewRecorder()
-		newHandler().ServeHTTP(response, request)
-		for header, want := range map[string]string{
-			"Strict-Transport-Security": "max-age=31536000",
-			"X-Content-Type-Options": "nosniff",
-			"X-Frame-Options": "DENY",
-			"Referrer-Policy": "no-referrer",
-			"Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-		} {
-			if got := response.Header().Get(header); got != want {
-				t.Errorf("%s on %s = %q, want %q", header, path, got, want)
-			}
+func TestHeaders(t *testing.T) {
+	for _, scheme := range []string{"http", "https"} {
+		for _, path := range []string{"/widgets", "/missing"} {
+			t.Run(scheme+path, func(t *testing.T) {
+				request := httptest.NewRequest(http.MethodGet, scheme+"://example.com"+path, nil)
+				response := httptest.NewRecorder()
+				newHandler().ServeHTTP(response, request)
+				for header, want := range map[string]string{
+					"X-Content-Type-Options": "nosniff",
+					"X-Frame-Options":        "DENY",
+					"Referrer-Policy":        "no-referrer",
+					"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
+				} {
+					if got := response.Header().Get(header); got != want {
+						t.Errorf("%s = %q, want %q", header, got, want)
+					}
+				}
+				wantHSTS := ""
+				if scheme == "https" {
+					wantHSTS = "max-age=31536000"
+				}
+				if got := response.Header().Get("Strict-Transport-Security"); got != wantHSTS {
+					t.Errorf("HSTS = %q, want %q", got, wantHSTS)
+				}
+			})
 		}
 	}
 }

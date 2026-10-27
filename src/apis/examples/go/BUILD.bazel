@@ -5,6 +5,22 @@ load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/go:index.bzl", "go_format_bin", "go_format_test", "go_lint_test")
+
+go_lint_test(
+    name = "get_widgets_example_go_lint_test",
+    targets = [":get_widgets_example_go_lib"],
+)
+
+go_format_test(
+    name = "get_widgets_example_go_format_test",
+    srcs = glob(["*.go"]),
+)
+
+go_format_bin(
+    name = "get_widgets_example_go_format_bin",
+    srcs = glob(["*.go"]),
+)
 
 go_coverage_test(
     name = "get_widgets_example_go_coverage_test",

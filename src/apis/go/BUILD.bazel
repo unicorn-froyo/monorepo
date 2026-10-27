@@ -1,6 +1,22 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/go:index.bzl", "go_format_bin", "go_format_test", "go_lint_test")
+
+go_lint_test(
+    name = "api_base_go_lint_test",
+    targets = [":api_base_go_lib"],
+)
+
+go_format_test(
+    name = "api_base_go_format_test",
+    srcs = glob(["*.go"]),
+)
+
+go_format_bin(
+    name = "api_base_go_format_bin",
+    srcs = glob(["*.go"]),
+)
 
 go_coverage_test(
     name = "api_base_go_coverage_test",
