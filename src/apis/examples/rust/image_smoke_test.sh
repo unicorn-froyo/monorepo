@@ -3,6 +3,11 @@
 set -euo pipefail
 
 image=${1:-get-widgets-rust:latest}
+expected_arch=${ARCH:?ARCH must name the expected Docker image architecture}
+
+[[ "$(docker image inspect "$image" --format '{{.Architecture}}')" == "$expected_arch" ]]
+[[ "$(docker image inspect "$image" --format '{{json .Config.Entrypoint}}')" == '["/app/server"]' ]]
+
 container=$(docker run --detach --network none --read-only --cap-drop ALL "$image")
 trap 'docker logs "$container"; docker rm --force "$container" >/dev/null' EXIT
 
@@ -42,4 +47,4 @@ check_response() {
 check_response "$response" 202
 [[ "$response" == *$'\r\n\r\n[]' ]]
 check_response "$(request /missing)" 404
-echo 'Rust image serves /widgets and /missing with networking disabled and a read-only root filesystem.'
+echo 'Rust image has the expected architecture and entrypoint and serves /widgets and /missing with networking disabled and a read-only root filesystem.'
