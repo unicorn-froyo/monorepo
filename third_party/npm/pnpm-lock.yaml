@@ -30,6 +30,9 @@ importers:
       eslint:
         specifier: 9.39.1
         version: 9.39.1
+      prettier:
+        specifier: 3.6.2
+        version: 3.6.2
       pyright:
         specifier: 1.1.411
         version: 1.1.411
@@ -846,6 +849,11 @@ packages:
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+
+  prettier@3.6.2:
+    resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
+    engines: {node: '>=14'}
+    hasBin: true
 
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
@@ -1901,6 +1909,8 @@ snapshots:
   picomatch@4.0.7: {}
 
   prelude-ls@1.2.1: {}
+
+  prettier@3.6.2: {}
 
   proxy-addr@2.0.8:
     dependencies:

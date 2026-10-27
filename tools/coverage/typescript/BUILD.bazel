@@ -1,4 +1,32 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_test")
+load("@npm//third_party/npm:c8/package_json.bzl", c8 = "bin")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+c8.c8_binary(
+    name = "c8_bin",
+)
+
+js_library(
+    name = "coverage_runner_lib",
+    srcs = ["coverage-runner.mjs"],
+)
+
+js_binary(
+    name = "coverage_runner",
+    data = [":coverage_runner_lib"],
+    entry_point = "coverage-runner.mjs",
+)
+
+js_test(
+    name = "coverage_runner_test",
+    data = [
+        "coverage-runner.test.mjs",
+        ":coverage_runner_lib",
+    ],
+    entry_point = "coverage-runner.test.mjs",
+)
 
 bzl_lint_test(
     name = "typescript_coverage_bzl_lint_test",
