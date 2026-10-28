@@ -1,4 +1,4 @@
-"""Rules for building a target for an explicit platform."""
+"""Rules for building a target for a selected platform."""
 
 def _platform_transition_impl(_settings, attr):
     return {"//command_line_option:platforms": str(attr.platform)}
@@ -18,7 +18,7 @@ def _platform_target_impl(ctx):
         ),
     ]
 
-platform_target = rule(
+_platform_target_rule = rule(
     implementation = _platform_target_impl,
     attrs = {
         "platform": attr.label(mandatory = True),
@@ -31,3 +31,17 @@ platform_target = rule(
         ),
     },
 )
+
+def platform_target(name, target, platform = None, **kwargs):
+    """Build a target for the matching Linux platform unless one is specified."""
+    if platform == None:
+        platform = select({
+            "@platforms//cpu:arm64": "//tools/toolchains:aarch64_linux",
+            "@platforms//cpu:x86_64": "//tools/toolchains:x86_64_linux",
+        })
+    _platform_target_rule(
+        name = name,
+        platform = platform,
+        target = target,
+        **kwargs
+    )

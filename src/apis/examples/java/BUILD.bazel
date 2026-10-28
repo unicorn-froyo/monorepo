@@ -57,10 +57,6 @@ java_binary(
 
 platform_target(
     name = "linux_server",
-    platform = select({
-        "@platforms//cpu:arm64": "//tools/toolchains:aarch64_linux",
-        "@platforms//cpu:x86_64": "//tools/toolchains:x86_64_linux",
-    }),
     target = ":server",
 )
 
