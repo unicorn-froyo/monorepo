@@ -19,7 +19,7 @@ pnpm.pnpm(pnpm_version_from = "//third_party/npm:package.json")
 use_repo(pnpm, "pnpm")
 
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.nogo(nogo = "//tools/lint/go:go_lint")
+go_sdk.nogo(nogo = "//tools/lint/go:go_lint_analyzer")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//third_party/golang:go.mod")

@@ -28,7 +28,10 @@ test("hardens routes and missing endpoints", async () => {
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["referrer-policy"], "no-referrer");
-    assert.equal(response.headers["permissions-policy"], "camera=(), microphone=(), geolocation=()");
+    assert.equal(
+      response.headers["permissions-policy"],
+      "camera=(), microphone=(), geolocation=()",
+    );
     assert.equal(response.headers["strict-transport-security"], undefined);
     assert.equal(response.headers["x-powered-by"], undefined);
   }
@@ -37,6 +40,11 @@ test("hardens routes and missing endpoints", async () => {
 test("sets HSTS on HTTPS when the proxy is trusted", async () => {
   const app = new HealthApi().app;
   app.set("trust proxy", "loopback");
-  const response = await request(app).get("/missing").set("X-Forwarded-Proto", "https");
-  assert.equal(response.headers["strict-transport-security"], "max-age=31536000");
+  const response = await request(app)
+    .get("/missing")
+    .set("X-Forwarded-Proto", "https");
+  assert.equal(
+    response.headers["strict-transport-security"],
+    "max-age=31536000",
+  );
 });

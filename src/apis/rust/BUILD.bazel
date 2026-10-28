@@ -1,8 +1,7 @@
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/rust:index.bzl", "rs_lint_test")
+load("//tools/lint/rust:index.bzl", "rs_format_bin", "rs_format_test", "rs_lint_test")
 
 rs_coverage_test(
     name = "api_base_rs_coverage_test",
@@ -17,6 +16,19 @@ rs_lint_test(
     ],
 )
 
+rs_format_test(
+    name = "api_base_rs_format_test",
+    targets = [
+        ":api_base_rs_lib",
+        ":api_base_rs_test",
+    ],
+)
+
+rs_format_bin(
+    name = "api_base_rs_format_bin",
+    srcs = glob(["*.rs"]),
+)
+
 exports_files(["Cargo.toml"])
 
 bzl_lint_test(
@@ -28,17 +40,6 @@ bzl_lint_test(
         ],
         allow_empty = True,
     ),
-)
-
-pkg_tar(
-    name = "api_base_layer",
-    srcs = [
-        "Cargo.toml",
-        "abstract_api_base.rs",
-    ],
-    package_dir = "/app/src/apis/rust",
-    strip_prefix = ".",
-    visibility = ["//visibility:public"],
 )
 
 rust_library(
