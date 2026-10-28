@@ -1,7 +1,7 @@
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 bzl_lint_test(
-    name = "ruby_image_bzl_lint_test",
+    name = "rb_image_bzl_lint_test",
     data = glob([
         "*.bazel",
         "*.bzl",

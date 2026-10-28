@@ -2,7 +2,7 @@
 
 load("//tools/image:index.bzl", "image_with_load")
 
-def python_image(name, tars, repo_tags, load_name = None, entrypoint = ["/app/server"], **kwargs):
+def py_image(name, tars, repo_tags, load_name = None, entrypoint = ["/app/server"], **kwargs):
     """Create a Python image and its local load target."""
     image_with_load(
         name = name,

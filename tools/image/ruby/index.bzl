@@ -2,7 +2,7 @@
 
 load("//tools/image:index.bzl", "image_with_load")
 
-def ruby_image(name, entrypoint, tars, repo_tags, load_name = None, env = {}, **kwargs):
+def rb_image(name, entrypoint, tars, repo_tags, load_name = None, env = {}, **kwargs):
     """Create a Ruby OCI image from build-time application and gem layers."""
     image_env = {
         "BUNDLE_DISABLE_SHARED_GEMS": "true",

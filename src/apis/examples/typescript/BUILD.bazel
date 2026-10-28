@@ -2,7 +2,7 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("//tools/coverage/typescript:index.bzl", "ts_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
-load("//tools/image/typescript:index.bzl", "typescript_image")
+load("//tools/image/typescript:index.bzl", "ts_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/typescript:index.bzl", "ts_format_bin", "ts_format_test", "ts_lint_test")
 
@@ -105,7 +105,7 @@ pkg_tar(
     package_dir = "/app",
 )
 
-typescript_image(
+ts_image(
     name = "get_widgets_example_oci",
     entrypoint = [
         "node",

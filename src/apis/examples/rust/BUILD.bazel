@@ -1,7 +1,7 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("//tools/coverage/rust:index.bzl", "rs_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
-load("//tools/image/rust:index.bzl", "rust_image")
+load("//tools/image/rust:index.bzl", "rs_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/rust:index.bzl", "rs_format_bin", "rs_format_test", "rs_lint_test")
 load("//tools/package/rust:index.bzl", "rs_package")
@@ -90,7 +90,7 @@ rs_package(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
-rust_image(
+rs_image(
     name = "get_widgets_example_oci",
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-rust:latest"],

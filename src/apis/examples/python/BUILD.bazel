@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
-load("//tools/image/python:index.bzl", "python_image")
+load("//tools/image/python:index.bzl", "py_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
@@ -78,7 +78,7 @@ pkg_tar(
     package_dir = "/app",
 )
 
-python_image(
+py_image(
     name = "get_widgets_example_oci",
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-python:latest"],

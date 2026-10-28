@@ -3,7 +3,7 @@ load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 exports_files(["index.bzl"])
 
 bzl_lint_test(
-    name = "python_image_bzl_lint_test",
+    name = "py_image_bzl_lint_test",
     data = glob([
         "*.bazel",
         "*.bzl",

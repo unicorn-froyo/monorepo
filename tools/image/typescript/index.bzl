@@ -2,7 +2,7 @@
 
 load("//tools/image:index.bzl", "image_with_load")
 
-def typescript_image(name, tars, entrypoint, repo_tags, load_name = None, **kwargs):
+def ts_image(name, tars, entrypoint, repo_tags, load_name = None, **kwargs):
     """Create a Node.js image and its local load target."""
     image_with_load(
         name = name,
