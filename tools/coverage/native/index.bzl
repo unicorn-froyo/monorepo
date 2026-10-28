@@ -2,10 +2,10 @@
 
 load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
 
-def _instrument_impl(_settings, _attr):
+def _instrument_impl(_settings, attr):
     return {
         "//command_line_option:collect_code_coverage": True,
-        "//command_line_option:instrumentation_filter": "//src/apis[/:]",
+        "//command_line_option:instrumentation_filter": "//%s[/:]" % attr.target.package,
     }
 
 instrumented = transition(
@@ -54,7 +54,13 @@ def coverage_impl(ctx, language, llvm_cov = None, llvm_profdata = None, tool_fil
     target = ctx.attr.target[0]
     executable = target[DefaultInfo].files_to_run.executable
     environment = target[RunEnvironmentInfo].environment if RunEnvironmentInfo in target else {}
-    args = [language, executable.short_path, json.encode(environment), str(MINIMUM_LINE_COVERAGE)]
+    args = [
+        language,
+        executable.short_path,
+        json.encode(environment),
+        str(MINIMUM_LINE_COVERAGE),
+        target.label.package + "/",
+    ]
     files = [executable]
     if llvm_cov:
         args += [llvm_cov.short_path, llvm_profdata.short_path]

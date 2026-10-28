@@ -1,10 +1,15 @@
 load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@npm//third_party/npm:prettier/package_json.bzl", prettier = "bin")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 js_library(
     name = "config",
     srcs = ["eslint.config.mjs"],
     visibility = ["//visibility:public"],
+)
+
+prettier.prettier_binary(
+    name = "prettier_bin",
 )
 
 bzl_lint_test(

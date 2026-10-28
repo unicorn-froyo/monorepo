@@ -59,6 +59,13 @@ bundle at `/usr/local/bundle`; startup only executes Puma and performs no gem
 installation. An explicit Ruby image build on macOS fails with a Linux platform
 compatibility diagnostic. Normal builds and tests remain available on macOS.
 
+The Rust image packages the Bazel-built server directly and starts without
+running Cargo or downloading dependencies. Build its image on a Linux amd64 or
+arm64 worker matching the intended image architecture. Image builds from macOS
+and cross-compilation are unsupported; native Rust builds and tests still work
+on macOS. Use the manual Bazel image and smoke-test targets to validate each
+Linux image architecture on a matching native worker.
+
 All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),
 including consistent security headers on HTTP responses and HTTPS-only HSTS.
 
@@ -104,7 +111,7 @@ Lint checks run as part of the normal build/test workflow:
 | Go | SDK analyzers via `go_lint` (nogo, checked during builds) | Native `rules_go` instrumentation |
 | Python | Ruff via `py_lint_test` and `py_format_test`; Pyright via `py_typecheck_test` | coverage.py via `py_coverage_test` |
 | Ruby | RuboCop via `rb_lint_test`, `rb_format_test`, and `rb_format_bin` | SimpleCov line coverage via `rb_coverage_test` |
-| Rust | Clippy and rustfmt via `rs_lint_test` | Native LLVM instrumentation via `rules_rust` |
+| Rust | Clippy via `rs_lint_test`; rustfmt via `rs_format_test` and `rs_format_bin` | Native LLVM instrumentation via `rules_rust` |
 | TypeScript | ESLint via `ts_lint_test` | c8/V8 via `ts_coverage_test`, mapped to TypeScript sources |
 
 Reusable wrappers live under `tools/lint/<language>/index.bzl` and
