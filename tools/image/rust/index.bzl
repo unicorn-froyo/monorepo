@@ -2,7 +2,7 @@
 
 load("//tools/image:index.bzl", "image_with_load")
 
-def rs_image(name, tars, repo_tags, load_name = None, entrypoint = ["/app/server"], **kwargs):
+def rust_image(name, tars, repo_tags, load_name = None, entrypoint = ["/app/server"], **kwargs):
     """Create a Rust OCI image from build-time application layers."""
     image_with_load(
         name = name,

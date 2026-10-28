@@ -1,0 +1,11 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+exports_files(["index.bzl"])
+
+bzl_lint_test(
+    name = "typescript_image_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

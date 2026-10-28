@@ -3,7 +3,7 @@ load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/go:index.bzl", "go_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
-load("//tools/image:index.bzl", "image_with_load")
+load("//tools/image/go:index.bzl", "go_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/go:index.bzl", "go_format_bin", "go_format_test", "go_lint_test")
 
@@ -80,16 +80,10 @@ pkg_tar(
     package_dir = "/app",
 )
 
-image_with_load(
+go_image(
     name = "get_widgets_example_oci",
-    architecture = select({
-        "@platforms//cpu:arm64": "arm64",
-        "@platforms//cpu:x86_64": "amd64",
-    }),
-    entrypoint = ["/app/server"],
     env = {"GIN_MODE": "release"},
     load_name = "get_widgets_example_image",
-    os = "linux",
     repo_tags = ["get-widgets-go:latest"],
     tags = ["manual"],
     tars = [":application_layer"],

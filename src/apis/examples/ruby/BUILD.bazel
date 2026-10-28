@@ -1,7 +1,7 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
-load("//tools/image/ruby:index.bzl", "rb_image")
+load("//tools/image/ruby:index.bzl", "ruby_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test")
 load("//tools/package/ruby:index.bzl", "rb_package")
@@ -76,7 +76,7 @@ rb_package(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
-rb_image(
+ruby_image(
     name = "get_widgets_example_oci",
     entrypoint = [
         "ruby",

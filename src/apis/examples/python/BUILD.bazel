@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
-load("//tools/image:index.bzl", "image_with_load")
+load("//tools/image/python:index.bzl", "python_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
@@ -82,13 +82,8 @@ pkg_tar(
     package_dir = "/app",
 )
 
-image_with_load(
+python_image(
     name = "get_widgets_example_oci",
-    base = select({
-        "@platforms//cpu:arm64": "@python_base_linux_arm64_v8",
-        "@platforms//cpu:x86_64": "@python_base_linux_amd64",
-    }),
-    entrypoint = ["/app/server"],
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-python:latest"],
     tags = ["manual"],
