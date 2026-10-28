@@ -1,0 +1,40 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+load("@rules_python//python:defs.bzl", "py_binary")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
+
+java_binary(
+    name = "jacoco",
+    main_class = "org.jacoco.cli.internal.Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = ["@maven//:org_jacoco_org_jacoco_cli"],
+)
+
+py_binary(
+    name = "coverage_bin",
+    srcs = ["coverage_bin.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_lint_test(
+    name = "java_coverage_py_lint_test",
+    srcs = ["coverage_bin.py"],
+)
+
+py_format_test(
+    name = "java_coverage_py_format_test",
+    srcs = ["coverage_bin.py"],
+)
+
+py_typecheck_test(
+    name = "java_coverage_py_typecheck_test",
+    srcs = ["coverage_bin.py"],
+)
+
+bzl_lint_test(
+    name = "java_coverage_bzl_lint_test",
+    data = glob([
+        "*.bazel",
+        "*.bzl",
+    ]),
+)

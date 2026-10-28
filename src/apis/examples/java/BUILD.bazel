@@ -1,0 +1,138 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library", "java_test")
+load("@rules_oci//oci:defs.bzl", "oci_load")
+load("//tools:platform_transition.bzl", "platform_target")
+load("//tools/coverage/java:index.bzl", "java_coverage_test")
+load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/image/java:index.bzl", "java_image")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/java:index.bzl", "java_format_bin", "java_format_test", "java_lint_test")
+
+java_lint_test(
+    name = "get_widgets_example_java_lint_test",
+    srcs = glob(["*.java"]),
+)
+
+java_format_test(
+    name = "get_widgets_example_java_format_test",
+    srcs = glob(["*.java"]),
+)
+
+java_format_bin(
+    name = "get_widgets_example_java_format_bin",
+    srcs = glob(["*.java"]),
+)
+
+bzl_lint_test(
+    name = "get_widgets_example_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+java_library(
+    name = "get_widgets_example_java_lib",
+    srcs = [
+        "GetWidgetsApplication.java",
+        "Server.java",
+    ],
+    visibility = ["//visibility:private"],
+    deps = [
+        "//src/apis/java:api_base_java_lib",
+        "@maven//:org_springframework_boot_spring_boot",
+        "@maven//:org_springframework_boot_spring_boot_autoconfigure",
+        "@maven//:org_springframework_boot_spring_boot_starter_web",
+        "@maven//:org_springframework_spring_context",
+        "@maven//:org_springframework_spring_web",
+    ],
+)
+
+java_binary(
+    name = "server",
+    main_class = "com.unicornfroyo.examples.widgets.Server",
+    runtime_deps = [":get_widgets_example_java_lib"],
+)
+
+platform(
+    name = "aarch64_linux",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform(
+    name = "x86_64_linux",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform_target(
+    name = "linux_server",
+    platform = select({
+        "@platforms//cpu:arm64": ":aarch64_linux",
+        "@platforms//cpu:x86_64": ":x86_64_linux",
+    }),
+    target = ":server",
+)
+
+java_test(
+    name = "get_widgets_example_java_test",
+    srcs = ["GetWidgetsApplicationTest.java"],
+    test_class = "com.unicornfroyo.examples.widgets.GetWidgetsApplicationTest",
+    deps = [
+        ":get_widgets_example_java_lib",
+        "//src/apis/java:api_base_java_lib",
+        "@maven//:junit_junit",
+        "@maven//:org_springframework_boot_spring_boot_starter_test",
+        "@maven//:org_springframework_spring_test",
+    ],
+)
+
+java_coverage_test(
+    name = "get_widgets_example_java_coverage_test",
+    srcs = ["GetWidgetsApplication.java"],
+    source_targets = [":get_widgets_example_java_lib"],
+    target = ":get_widgets_example_java_test",
+)
+
+java_image(
+    name = "get_widgets_example_oci",
+    binary = ":linux_server",
+    entrypoint = "/app/server",
+    tags = ["manual"],
+)
+
+oci_load(
+    name = "get_widgets_example_image",
+    image = ":get_widgets_example_oci",
+    repo_tags = ["get-widgets-java:latest"],
+    tags = ["manual"],
+)
+
+deploy_api(
+    name = "get-widgets-qa",
+    deployment_zone = "//src/zones/examples:example_qa",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-java:latest",
+    tags = [
+        "manual",
+        "qa",
+    ],
+)
+
+deploy_api(
+    name = "get-widgets-prod",
+    deployment_zone = "//src/zones/examples:example_prod",
+    image = ":get_widgets_example_oci",
+    image_name = "get-widgets-java:latest",
+    tags = [
+        "manual",
+        "prod",
+    ],
+)

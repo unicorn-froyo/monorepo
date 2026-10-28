@@ -1,6 +1,6 @@
 # Cross-platform API standards
 
-These standards apply to Go, Python, Ruby, Rust, and TypeScript APIs under
+These standards apply to Go, Java, Python, Ruby, Rust, and TypeScript APIs under
 `src/apis/`. Keep the behavior consistent when adding a stack or changing a
 shared API base; implement it in the language's API foundation rather than
 copying it into each endpoint.
@@ -47,6 +47,8 @@ also disable `X-Powered-By`.
 
 - Go: construct services with `api.New()`; Gin middleware is registered on the
   engine before routes.
+- Java: extend `AbstractApiBase`; its Spring `OncePerRequestFilter` runs before
+  MVC routing so successful, error, and not-found responses share the policy.
 - Python: subclass `AbstractApiBase`; it installs ASGI middleware before
   configuring routes.
 - Ruby: subclass `AbstractApiBase`; its Railtie registers Rack middleware at

@@ -1,0 +1,64 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+load("//tools/coverage/java:index.bzl", "java_coverage_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/java:index.bzl", "java_format_bin", "java_format_test", "java_lint_test")
+
+package(default_visibility = ["//src/apis:__subpackages__"])
+
+java_lint_test(
+    name = "api_base_java_lint_test",
+    srcs = glob(["*.java"]),
+)
+
+java_format_test(
+    name = "api_base_java_format_test",
+    srcs = glob(["*.java"]),
+)
+
+java_format_bin(
+    name = "api_base_java_format_bin",
+    srcs = glob(["*.java"]),
+)
+
+bzl_lint_test(
+    name = "api_base_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+java_library(
+    name = "api_base_java_lib",
+    srcs = ["AbstractApiBase.java"],
+    deps = [
+        "@maven//:jakarta_servlet_jakarta_servlet_api",
+        "@maven//:org_springframework_boot_spring_boot_starter_web",
+        "@maven//:org_springframework_spring_context",
+        "@maven//:org_springframework_spring_core",
+        "@maven//:org_springframework_spring_web",
+    ],
+)
+
+java_test(
+    name = "api_base_java_test",
+    srcs = ["AbstractApiBaseTest.java"],
+    test_class = "com.unicornfroyo.api.AbstractApiBaseTest",
+    deps = [
+        ":api_base_java_lib",
+        "@maven//:junit_junit",
+        "@maven//:org_springframework_boot_spring_boot_starter_test",
+        "@maven//:org_springframework_spring_test",
+        "@maven//:org_springframework_spring_web",
+    ],
+)
+
+java_coverage_test(
+    name = "api_base_java_coverage_test",
+    srcs = ["AbstractApiBase.java"],
+    source_targets = [":api_base_java_lib"],
+    target = ":api_base_java_test",
+)
