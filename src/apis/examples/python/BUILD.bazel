@@ -1,9 +1,9 @@
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_python//python:defs.bzl", "py_binary")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
+load("//tools/image:index.bzl", "image_with_load")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
 
@@ -66,27 +66,11 @@ py_binary(
     ],
 )
 
-platform(
-    name = "aarch64_linux",
-    constraint_values = [
-        "@platforms//cpu:aarch64",
-        "@platforms//os:linux",
-    ],
-)
-
-platform(
-    name = "x86_64_linux",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:linux",
-    ],
-)
-
 platform_target(
     name = "linux_server",
     platform = select({
-        "@platforms//cpu:arm64": ":aarch64_linux",
-        "@platforms//cpu:x86_64": ":x86_64_linux",
+        "@platforms//cpu:arm64": "//tools/toolchains:aarch64_linux",
+        "@platforms//cpu:x86_64": "//tools/toolchains:x86_64_linux",
     }),
     target = ":server",
 )
@@ -98,22 +82,17 @@ pkg_tar(
     package_dir = "/app",
 )
 
-oci_image(
+image_with_load(
     name = "get_widgets_example_oci",
     base = select({
         "@platforms//cpu:arm64": "@python_base_linux_arm64_v8",
         "@platforms//cpu:x86_64": "@python_base_linux_amd64",
     }),
     entrypoint = ["/app/server"],
-    tags = ["manual"],
-    tars = [":application_layer"],
-)
-
-oci_load(
-    name = "get_widgets_example_image",
-    image = ":get_widgets_example_oci",
+    load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-python:latest"],
     tags = ["manual"],
+    tars = [":application_layer"],
 )
 
 deploy_api(

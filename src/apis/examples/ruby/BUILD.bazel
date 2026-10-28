@@ -1,4 +1,3 @@
-load("@rules_oci//oci:defs.bzl", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
@@ -89,6 +88,8 @@ rb_image(
         "tcp://0.0.0.0:8080",
         "src/apis/examples/ruby/config.ru",
     ],
+    load_name = "get_widgets_example_image",
+    repo_tags = ["get-widgets-ruby:latest"],
     tags = ["manual"],
     target_compatible_with = ["@platforms//os:linux"],
     tars = [
@@ -97,12 +98,4 @@ rb_image(
         "//src/apis/ruby:api_base_layer",
         ":application_layer",
     ],
-)
-
-oci_load(
-    name = "get_widgets_example_image",
-    image = ":get_widgets_example_oci",
-    repo_tags = ["get-widgets-ruby:latest"],
-    tags = ["manual"],
-    target_compatible_with = ["@platforms//os:linux"],
 )

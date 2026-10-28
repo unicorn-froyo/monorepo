@@ -1,5 +1,4 @@
 load("@rules_java//java:defs.bzl", "java_binary", "java_library", "java_test")
-load("@rules_oci//oci:defs.bzl", "oci_load")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/java:index.bzl", "java_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
@@ -56,27 +55,11 @@ java_binary(
     runtime_deps = [":get_widgets_example_java_lib"],
 )
 
-platform(
-    name = "aarch64_linux",
-    constraint_values = [
-        "@platforms//cpu:aarch64",
-        "@platforms//os:linux",
-    ],
-)
-
-platform(
-    name = "x86_64_linux",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:linux",
-    ],
-)
-
 platform_target(
     name = "linux_server",
     platform = select({
-        "@platforms//cpu:arm64": ":aarch64_linux",
-        "@platforms//cpu:x86_64": ":x86_64_linux",
+        "@platforms//cpu:arm64": "//tools/toolchains:aarch64_linux",
+        "@platforms//cpu:x86_64": "//tools/toolchains:x86_64_linux",
     }),
     target = ":server",
 )
@@ -105,12 +88,7 @@ java_image(
     name = "get_widgets_example_oci",
     binary = ":linux_server",
     entrypoint = "/app/server",
-    tags = ["manual"],
-)
-
-oci_load(
-    name = "get_widgets_example_image",
-    image = ":get_widgets_example_oci",
+    load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-java:latest"],
     tags = ["manual"],
 )
