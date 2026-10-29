@@ -1,6 +1,6 @@
 load("@rules_ruby//ruby:defs.bzl", "rb_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test")
+load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test", "rb_typecheck_test")
 
 exports_files([
     "coverage_bin.rb",
@@ -14,6 +14,11 @@ rb_lint_test(
 
 rb_format_test(
     name = "ruby_coverage_rb_format_test",
+    srcs = glob(["*.rb"]),
+)
+
+rb_typecheck_test(
+    name = "ruby_coverage_rb_typecheck_test",
     srcs = glob(["*.rb"]),
 )
 

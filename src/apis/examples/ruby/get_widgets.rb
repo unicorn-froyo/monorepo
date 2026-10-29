@@ -1,3 +1,4 @@
+# typed: true
 # frozen_string_literal: true
 
 require_relative "../../ruby/abstract_api_base"

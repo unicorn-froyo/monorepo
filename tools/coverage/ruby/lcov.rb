@@ -1,3 +1,4 @@
+# typed: true
 # frozen_string_literal: true
 
 module RubyCoverage
@@ -17,7 +18,7 @@ module RubyCoverage
 
   def validate_lcov(report)
     sources = report.lines.grep(/^SF:/).map { |line| line.delete_prefix("SF:").strip }
-    raise "LCOV report contains no source files" if sources.empty?
+    Kernel.raise "LCOV report contains no source files" if sources.empty?
 
     validate_application_sources(sources)
     validate_portable_sources(sources)
@@ -26,12 +27,12 @@ module RubyCoverage
   def validate_application_sources(sources)
     return if sources.any? { |path| path.start_with?("src/apis/") }
 
-    raise "LCOV report contains no src/apis application sources"
+    Kernel.raise "LCOV report contains no src/apis application sources"
   end
 
   def validate_portable_sources(sources)
     return unless sources.any? { |path| path.start_with?("/") || path.include?("\\\\") }
 
-    raise "LCOV report contains a non-portable source path"
+    Kernel.raise "LCOV report contains a non-portable source path"
   end
 end

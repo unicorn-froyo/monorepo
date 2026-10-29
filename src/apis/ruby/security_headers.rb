@@ -1,3 +1,4 @@
+# typed: true
 # frozen_string_literal: true
 
 # Rack middleware for consistent response header hardening across Rails routes and errors.

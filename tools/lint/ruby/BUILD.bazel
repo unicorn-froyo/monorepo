@@ -2,6 +2,7 @@ load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 
 exports_files([
     ".rubocop.yml",
+    "external.rbi",
 ])
 
 filegroup(
