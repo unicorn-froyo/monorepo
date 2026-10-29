@@ -1,8 +1,8 @@
 """OCI images for prebuilt Ruby applications."""
 
-load("@rules_oci//oci:defs.bzl", "oci_image")
+load("//tools/image:index.bzl", "image_with_load")
 
-def rb_image(name, entrypoint, tars, env = {}, **kwargs):
+def rb_image(name, entrypoint, tars, repo_tags, load_name = None, env = {}, **kwargs):
     """Create a Ruby OCI image from build-time application and gem layers."""
     image_env = {
         "BUNDLE_DISABLE_SHARED_GEMS": "true",
@@ -15,7 +15,7 @@ def rb_image(name, entrypoint, tars, env = {}, **kwargs):
         "RAILS_ENV": "production",
     }
     image_env.update(env)
-    oci_image(
+    image_with_load(
         name = name,
         base = select({
             "@platforms//cpu:arm64": "@ruby_base_linux_arm64_v8",
@@ -23,6 +23,8 @@ def rb_image(name, entrypoint, tars, env = {}, **kwargs):
         }),
         entrypoint = entrypoint,
         env = image_env,
+        load_name = load_name,
+        repo_tags = repo_tags,
         tars = tars,
         workdir = "/app",
         **kwargs
