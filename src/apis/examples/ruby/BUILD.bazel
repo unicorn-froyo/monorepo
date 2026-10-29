@@ -3,7 +3,7 @@ load("@rules_ruby//ruby:defs.bzl", "rb_library", "rb_test")
 load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
 load("//tools/image/ruby:index.bzl", "rb_image")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
-load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test")
+load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test", "rb_typecheck_test")
 load("//tools/package/ruby:index.bzl", "rb_package")
 
 rb_coverage_test(
@@ -26,6 +26,17 @@ rb_format_test(
         "*.rb",
         "*.ru",
     ]),
+)
+
+rb_typecheck_test(
+    name = "get_widgets_example_rb_typecheck_test",
+    srcs = glob([
+        "*.rb",
+        "*.ru",
+    ]) + [
+        "//src/apis/ruby:abstract_api_base.rb",
+        "//src/apis/ruby:security_headers.rb",
+    ],
 )
 
 bzl_lint_test(
