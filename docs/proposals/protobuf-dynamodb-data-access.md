@@ -1,6 +1,10 @@
 # Protobuf DynamoDB Data Access Design
 
-Status: Proposed
+Status: Superseded by [PostgreSQL access and shared Flyway migrations](postgresql-and-flyway.md).
+
+The original proposal below is retained for reference. The selected direction is
+native PostgreSQL libraries per language, shared Flyway SQL migrations, and a
+containerized PostgreSQL fixture for service integration tests.
 
 ## Summary
 
