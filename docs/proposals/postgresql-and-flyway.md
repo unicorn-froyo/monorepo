@@ -191,6 +191,201 @@ a live database during ordinary builds. CI must detect stale generated mappings
 or schema inputs. Do not check in emitted runtime client code merely to avoid
 hermetic generation.
 
+## Proposed Bazel rules and providers
+
+The following interfaces are implementation requirements, not existing targets.
+Rule implementations emit launchers and manifests during analysis/build; they
+never start containers or connect to databases in build actions. Runtime
+orchestration uses a pinned, Bazel-built runner. There are no nested Bazel calls
+inside migration launchers or test executables.
+
+### Migration rules: `tools/migrations/flyway/index.bzl`
+
+| Interface | Attributes and outputs | Behavior |
+| --- | --- | --- |
+| `flyway_migrations` | `srcs`: nonempty SQL labels; `schema`: SQL schema name; `history_table`: default `flyway_schema_history`; `script_configs`: optional labels for Flyway per-script configuration. Returns `FlywayMigrationsInfo` and declared runtime files. | Validates filenames, duplicate versions, and SQL/config pairing; produces a deterministic manifest with ordered paths, content digests, schema, and history-table identity. This packages migrations without executing them. |
+| `flyway_command` | `migrations`: requires `FlywayMigrationsInfo`; `command`: `info`, `validate`, or `migrate`; `environment`: default `POSTGRES_CONNECTION_FILE`. Returns a runnable executable with all CLI/JVM/JDBC/module runfiles. | Reads connection credentials from a runtime file; selects only declared migration files. `migrate` performs preflight validation permitting pending versions, applies migrations, then validates the resulting history. Defaults prohibit clean, automatic repair/baseline, and out-of-order migration. Propagates Flyway's failure status. |
+
+Use a `flyway_toolchain` registration to supply the pinned CLI, JVM, PostgreSQL
+module, and JDBC driver for the execution host. Document supported host
+constraints; fail clearly on an unsupported host. `flyway_command` selects its
+toolchain for the runnable target's platform, not an unrelated remote build host.
+Script configs declare non-transactional exceptions; arbitrary runtime flags
+cannot silently override migration locations or the safety defaults.
+
+`FlywayMigrationsInfo` contains `sql_files`, `script_configs`, `manifest`,
+`schema`, and `history_table`. Its runtime closure travels with every consuming
+target. The manifest contains no credentials or environment-specific DB address.
+
+### PostgreSQL rules: `tools/testing/postgresql/index.bzl`
+
+| Interface | Attributes and outputs | Behavior |
+| --- | --- | --- |
+| `postgresql_fixture` | `migrations`: requires `FlywayMigrationsInfo`; `image`: pinned PostgreSQL OCI image target; `database`: default `testdb`; `extensions`: declared required extension names; `startup_timeout_seconds`: default 30; `migration_timeout_seconds`: default 60. Returns `PostgresqlFixtureInfo`. | Describes a fixture and its image/migration runfiles. Creates no running resources during build. Extensions must already be packaged in the selected image and created by declared migrations; readiness verifies their availability. |
+| `postgresql_test` | `fixture`: requires `PostgresqlFixtureInfo`; `test`: existing executable coverage-test target; optional `service` executable or `service_image` OCI target, mutually exclusive; `service_args`: string list; `service_ready_path`: HTTP path; `service_startup_timeout_seconds`: default 30; `cleanup_timeout_seconds`: default 10; `data`: labels. A real `test = True` rule. | Starts an isolated DB, applies Flyway migrations, optionally starts the service, then runs the existing coverage executable with the connection file and service URL in its environment. Always attempts cleanup; preserves test/coverage outputs, service logs, PostgreSQL logs, Flyway output, and a credential-free lifecycle report. |
+| `postgresql_dev` | `fixture`; `persistent`: default false; `volume_name`: required when persistent; `startup_timeout_seconds`: default 30. A runnable target. | Starts and migrates a developer DB, writes a connection file with owner-only permissions, prints its path, and remains attached until interrupted. Cleans up disposable resources. An explicit `reset` subcommand is the only route to resetting a named development volume. |
+| `postgresql_integration_suite` | `tests`: labels of outer `postgresql_test` targets. A macro emitting a `test_suite`. | Defines the authoritative CI list of container tests. It must not discover tests through naming conventions or silently omit new supported languages. |
+
+`PostgresqlFixtureInfo` contains the migration provider, database name, required
+extensions, timeouts, pinned image artifact/digest/platform metadata, and runtime
+closure. Image targets provide a declared loadable OCI archive plus platform
+metadata; the runner loads it using the configured container runtime. Do not run
+an unpinned `docker pull` during a test. A container runtime toolchain supplies
+the engine client and image loader; access to its daemon/socket is an explicit
+execution requirement. Toolchain registration and OCI integration helpers live
+under `tools/`, with native-platform image selection checked before startup.
+
+`postgresql_test` is marked `local`, `external`, and `requires-docker` by the
+implementation; map these to the executor's supported execution requirements.
+It always executes locally against the configured daemon and bypasses test
+result caching. Use `size = "large"` and an explicit Bazel `timeout` appropriate
+to the child suite, migrations, service startup, and cleanup. Stage 0 must verify
+these scheduling/cache semantics rather than relying on tags alone.
+
+### Runtime lifecycle and connection contract
+
+The outer test owns this sequence:
+
+1. Allocate unique resource names and labels using Bazel test/shard/run identity
+   plus a random suffix. Register cleanup before creating any resources.
+2. Start the PostgreSQL container with disposable storage and the pinned image.
+   Poll an authenticated SQL query until ready or the startup deadline expires.
+3. Run the declared Flyway bundle using a DDL role; create an application DML
+   role for service and test connections. A migration failure prevents launching
+   either the service or child suite.
+4. Write a versioned JSON connection file under `TEST_TMPDIR`, with owner-only
+   permissions. Set `POSTGRES_CONNECTION_FILE` to its absolute path for child
+   processes. Its fields are `format_version`, `host`, `port`, `database`, `user`,
+   `password`, and `sslmode`; adapters construct language-specific DSNs.
+5. For a host service, inject the host connection file and select a service port
+   with bounded retry on bind collisions. For a service image, inject a second
+   connection file with the DB network alias and mount it read-only into the
+   container. Connect both containers to the test-owned network. Publish the
+   service on an ephemeral loopback port for the host test process.
+6. Poll the optional service readiness endpoint, then run the child coverage
+   executable directly. Export `SERVICE_BASE_URL` when a service is running.
+   Forward cancellation and preserve nonzero child status; cleanup failure also
+   fails an otherwise successful suite. Apply the declared deadlines.
+7. Collect redacted diagnostics and coverage artifacts before deleting resources.
+   Never copy connection files or credentials into `TEST_UNDECLARED_OUTPUTS_DIR`.
+   Record cleanup failures and resource labels for the recovery command.
+
+Container tests that launch multiple services can extend the service manifest
+after the single-service implementation is proven; they do not acquire access
+to a shared global fixture. Runtime files are not Starlark providers: providers
+describe build inputs, and the runner creates addresses and credentials at runtime.
+
+### BUILD examples
+
+An application database package declares SQL and runnable operations once:
+
+```starlark
+load("//tools/migrations/flyway:index.bzl", "flyway_command", "flyway_migrations")
+load("//tools/testing/postgresql:index.bzl", "postgresql_dev", "postgresql_fixture")
+
+flyway_migrations(
+    name = "schema",
+    srcs = glob(["migrations/V*__*.sql"]),
+    schema = "widgets",
+    visibility = ["//src/apis/examples:__subpackages__"],
+)
+
+flyway_command(name = "migrate", migrations = ":schema", command = "migrate")
+flyway_command(name = "validate", migrations = ":schema", command = "validate")
+flyway_command(name = "status", migrations = ":schema", command = "info")
+
+postgresql_fixture(
+    name = "postgres",
+    migrations = ":schema",
+    image = "//tools/testing/postgresql:postgres_image",
+    visibility = ["//src/apis/examples:__subpackages__"],
+)
+
+postgresql_dev(name = "dev", fixture = ":postgres")
+```
+
+Each language retains its repository coverage rule. For example, the Python
+service package composes the existing rule with the fixture:
+
+```starlark
+load("//tools/coverage/python:index.bzl", "py_coverage_test")
+load("//tools/testing/postgresql:index.bzl", "postgresql_test")
+
+py_coverage_test(
+    name = "database_contract_coverage",
+    srcs = ["database_contract_test.py"],
+    source_targets = [":application"],
+    deps = [":application"],
+    tags = ["manual"],  # Invoked by the outer fixture; no standalone DB exists.
+)
+
+postgresql_test(
+    name = "database_integration_test",
+    fixture = "//src/data/example/widgets:postgres",
+    test = ":database_contract_coverage",
+    service = ":server",
+    service_ready_path = "/readyz",
+    size = "large",
+    timeout = "long",
+)
+```
+
+The `server`, `application`, and test sources in this example are proposed
+integration targets, not changes to the current API example contract. Readiness
+is implemented in each example without changing the existing `/widgets` behavior.
+Omit `service` for ORM repository tests that connect directly to the fixture.
+
+Use the same composition with `go_coverage_test`, `java_coverage_test`,
+`rb_coverage_test`, `rs_coverage_test`, and `ts_coverage_test`; preserve their
+language-specific arguments and thresholds. Extend those rules only where
+runtime environment/runfiles propagation is missing, under
+`tools/coverage/{language}`. No plain lower-level test may replace a coverage
+target to make DB integration easier.
+
+The outer rule merges the child's complete runfiles and instrumentation metadata
+using the existing coverage-rule contracts, forwards Bazel coverage/test
+environment variables, and preserves reports even when the child fails. If a
+language requires instrumentation at analysis time, propagate it through the
+`test` dependency rather than instrumenting only the launcher. Verify this with
+a deliberately uncovered application branch/file and with a failing child suite
+for every supported language. Preserve the existing coverage policy; the DB
+fixture does not lower coverage thresholds.
+
+Planned commands after implementation:
+
+```text
+bazelisk build //src/data/example/widgets:schema
+bazelisk run //src/data/example/widgets:dev
+bazelisk run //src/data/example/widgets:status
+bazelisk run //src/data/example/widgets:validate
+bazelisk run //src/data/example/widgets:migrate
+bazelisk test //src/apis/examples/python:database_integration_test
+bazelisk test //tools/testing/postgresql:integration_tests
+```
+
+The external-DB commands require `POSTGRES_CONNECTION_FILE` at runtime. CI runs
+the final suite target on workers with the declared container requirements, in
+addition to `bazelisk build //...` and `bazelisk test //...`. The child coverage
+targets are manual; the outer tests remain discoverable and the explicit suite
+contains all six language integrations. Each test creates its own fixture; a
+`test_suite` is a target grouping, not a shared database lifecycle.
+
+### Rule implementation and acceptance
+
+Stage 0 delivers providers, toolchains, `flyway_migrations`, `flyway_command`,
+`postgresql_fixture`, `postgresql_dev`, and one `postgresql_test` composition.
+Stage 1 tests analysis rejection of duplicate versions, wrong providers, missing
+runfiles, unsupported platforms, and conflicting service attributes, plus runtime
+readiness/migration failures and cleanup after interrupted children. Stage 2 adds
+all six coverage compositions and the explicit integration suite.
+
+Add Bazel tests for the rules and runner under `tools/` using the same language
+coverage rules as application code. The acceptance report must include a
+successful BUILD example for each language, reports from failing coverage suites,
+proof that two consecutive integration invocations actually execute, and service
+connections from both host and container modes. The benchmark cases below are
+executed through these targets, not a separate shell orchestration pipeline.
+
 ## Feasibility plan and delivery
 
 | Stage | Work and deliverable | Exit gate |
