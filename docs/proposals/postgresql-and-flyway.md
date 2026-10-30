@@ -174,9 +174,11 @@ PostgreSQL images. Build artifacts must not depend on ambient Flyway, Java,
 `psql`, or package-manager installations. Image acquisition can require network
 access during setup; report cold acquisition separately from warm benchmarks.
 
-Expose package-level targets for migration status, validation, application,
-local development, and integration tests. Targets that mutate an external DB use
-`bazel run`, not cacheable build actions. Integration tests must disable result
+Expose package-level targets for static schema linting, local development, and
+integration tests. Deployment jobs consume the declared migration bundle and
+shared Flyway runtime; no generic status/validation command rule is proposed.
+Deployment migration execution is a runtime operation, not a cacheable build
+action. Integration tests must disable result
 caching where external container state could invalidate results. Pass credentials
 at runtime, keep them out of build outputs and logs, and never bake them into
 artifacts. Versioned migration SQL is declared Bazel runtime data.
@@ -204,12 +206,29 @@ inside migration launchers or test executables.
 | Interface | Attributes and outputs | Behavior |
 | --- | --- | --- |
 | `flyway_migrations` | `srcs`: nonempty SQL labels; `schema`: SQL schema name; `history_table`: default `flyway_schema_history`; `script_configs`: optional labels for Flyway per-script configuration. Returns `FlywayMigrationsInfo` and declared runtime files. | Validates filenames, duplicate versions, and SQL/config pairing; produces a deterministic manifest with ordered paths, content digests, schema, and history-table identity. This packages migrations without executing them. |
-| `flyway_command` | `migrations`: requires `FlywayMigrationsInfo`; `command`: `info`, `validate`, or `migrate`; `environment`: default `POSTGRES_CONNECTION_FILE`. Returns a runnable executable with all CLI/JVM/JDBC/module runfiles. | Reads connection credentials from a runtime file; selects only declared migration files. `migrate` performs preflight validation permitting pending versions, applies migrations, then validates the resulting history. Defaults prohibit clean, automatic repair/baseline, and out-of-order migration. Propagates Flyway's failure status. |
+| `flyway_schema_test` | `migrations`: requires `FlywayMigrationsInfo`; `lint_config`: optional declared configuration, defaulting to repository SQL policy. Returns a normal, cacheable Bazel test. | Statically checks migration names, duplicate versions, SQL/config pairing, supported script settings, and PostgreSQL SQL lint/parse diagnostics. No database, Docker, credentials, Flyway CLI, or JVM is required. |
+
+`flyway_schema_test` names the repository's static test for Flyway migration
+sources; it does not invoke Flyway's database-backed `validate` command. Use
+pinned [SQLFluff with its PostgreSQL dialect](https://docs.sqlfluff.com/en/stable/reference/dialects/)
+and a declared repository configuration for SQL linting. Reject parse errors and
+do not silently skip large files or unsupported syntax. Keep Flyway placeholder
+replacement disabled initially so linted SQL is the SQL executed. Any later
+templating support must declare deterministic inputs for both lint and execution.
+Pin linter dependencies through `third_party/pypi/` and host Python-specific
+lint helpers under `tools/lint/python` if needed.
+
+Linting checks source conventions and the linter's supported SQL grammar. It
+cannot prove migration ordering against existing objects, deployed checksums,
+permissions, lock behavior, or successful execution. Applying migrations and
+checking database history remain responsibilities of the PostgreSQL-backed
+coverage tests and deployment runtime. Do not start a container in this test.
 
 Use a `flyway_toolchain` registration to supply the pinned CLI, JVM, PostgreSQL
 module, and JDBC driver for the execution host. Document supported host
-constraints; fail clearly on an unsupported host. `flyway_command` selects its
-toolchain for the runnable target's platform, not an unrelated remote build host.
+constraints; fail clearly on an unsupported host. The fixture/deployment runtime
+selects its toolchain for the runnable target's platform, not an unrelated remote
+build host. Static lint tests do not depend on this toolchain.
 Script configs declare non-transactional exceptions; arbitrary runtime flags
 cannot silently override migration locations or the safety defaults.
 
@@ -310,22 +329,21 @@ describe build inputs, and the runner creates addresses and credentials at runti
 
 ### BUILD examples
 
-An application database package declares SQL and runnable operations once:
+An application database package declares the migration bundle and its static
+test once, then reuses that bundle in its PostgreSQL fixture:
 
 ```starlark
-load("//tools/migrations/flyway:index.bzl", "flyway_command", "flyway_migrations")
+load("//tools/migrations/flyway:index.bzl", "flyway_migrations", "flyway_schema_test")
 load("//tools/testing/postgresql:index.bzl", "postgresql_dev", "postgresql_fixture")
 
 flyway_migrations(
     name = "schema",
-    srcs = glob(["migrations/V*__*.sql"]),
+    srcs = glob(["migrations/*.sql"]),
     schema = "widgets",
     visibility = ["//src/apis/examples:__subpackages__"],
 )
 
-flyway_command(name = "migrate", migrations = ":schema", command = "migrate")
-flyway_command(name = "validate", migrations = ":schema", command = "validate")
-flyway_command(name = "status", migrations = ":schema", command = "info")
+flyway_schema_test(name = "schema_test", migrations = ":schema")
 
 postgresql_fixture(
     name = "postgres",
@@ -377,16 +395,14 @@ Planned commands after implementation:
 
 ```text
 bazelisk build //src/data/example/widgets:schema
+bazelisk test //src/data/example/widgets:schema_test
 bazelisk run //src/data/example/widgets:dev
-bazelisk run //src/data/example/widgets:status
-bazelisk run //src/data/example/widgets:validate
-bazelisk run //src/data/example/widgets:migrate
 bazelisk test //src/apis/examples/python:database_integration_test
 bazelisk test //tools/testing/postgresql:integration_tests
 ```
 
-The external-DB commands require `POSTGRES_CONNECTION_FILE` at runtime. CI runs
-the final suite target on workers with the declared container requirements, in
+`schema_test` runs in the ordinary unit-test lane without PostgreSQL. CI runs
+the final integration suite target on workers with the declared container requirements, in
 addition to `bazelisk build //...` and `bazelisk test //...`. Coverage targets with
 `postgres` remain directly runnable and discoverable; the explicit suite contains
 all six language integrations. Each test creates its own fixture; a
@@ -394,9 +410,13 @@ all six language integrations. Each test creates its own fixture; a
 
 ### Rule implementation and acceptance
 
-Stage 0 delivers providers, toolchains, `flyway_migrations`, `flyway_command`,
+Stage 0 delivers providers, toolchains, `flyway_migrations`, `flyway_schema_test`,
 `postgresql_fixture`, `postgresql_dev`, and the optional `postgres` attribute on
-one existing coverage rule.
+one existing coverage rule. Static test cases include accepted SQL, malformed SQL,
+invalid filenames, equivalent duplicate version numbers, orphan script configs,
+unsupported configuration, and attempted file skipping. Verify that the lint test
+runs without a database/container runtime and that all source files are declared
+inputs. Flyway-specific source checks share validation logic with bundle packaging.
 Stage 1 tests analysis rejection of duplicate versions, wrong providers, missing
 runfiles and unsupported platforms, plus runtime
 readiness/migration failures and cleanup after interrupted children. Stage 2 adds
@@ -443,6 +463,7 @@ and achieved rate, p50/p95/p99 latency, errors, lock waits, CPU, and memory.
 
 | Case | Concrete acceptance criterion |
 | --- | --- |
+| Static schema lint | Check the 100-migration fixture with `flyway_schema_test`: median <= 5 s, maximum <= 10 s, with tool artifacts present and Bazel test caching disabled for measurement. Runs without network, database, or container runtime access; malformed SQL/config/name fixtures fail with file locations. |
 | Warm fixture startup | From Bazel-launched harness start to successful migrated SQL connection: median <= 15 s, maximum <= 30 s, with images and build artifacts present. Report image download/build separately. |
 | Empty DB replay | Apply the 100-migration DDL fixture: median <= 30 s, maximum <= 60 s, excluding container startup. Compare resulting normalized schema with the expected schema. |
 | No-op deployment | Validate/migrate/validate an up-to-date 100-migration database: median <= 5 s, maximum <= 10 s, including CLI startup. No schema or application-data changes. |
