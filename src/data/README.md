@@ -94,11 +94,14 @@ The target prints a private connection-file path. Set `POSTGRES_CONNECTION_FILE`
 to that path in a second shell, then run:
 
 ```sh
-bazelisk run //src/apis/examples/python:database_server
+bazelisk run //src/apis/examples/python:server
 ```
 
-The service listens on loopback port 8080, retains `GET /widgets` returning
-`202 []`, and adds `/database/widgets` and `/readyz`. Stop the service before
+The existing service listens on port 8080, retains `GET /widgets` returning
+`202 []`, and exposes `/database/widgets` and `/readyz`. Its existing entrypoint
+uses the connection file when configured; there is no separate database app or
+server. Without database configuration, the database query endpoint returns 503
+and ordinary `/widgets` behavior remains available. Stop the service before
 interrupting the development DB target. The database and its data are disposable;
 persistent-volume/reset workflows are not implemented in this first slice.
 

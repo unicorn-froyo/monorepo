@@ -35,6 +35,11 @@ line/branch coverage threshold.
 
 ## Repeated local smoke measurements
 
+These measurements were collected at `ebfe9d1`, before consolidating the database
+routes into the existing app/server entrypoint. Current tests use that single
+application and measure five intended source files; the six-file artifact count
+below describes the original sample.
+
 Executed through Bazel with artifacts/images already available:
 
 ```sh

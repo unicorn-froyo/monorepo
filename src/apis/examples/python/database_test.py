@@ -19,7 +19,7 @@ from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from src.apis.examples.python.database_app import create_app
+from src.apis.examples.python.get_widgets import GetWidgets
 from src.data.example.widgets.python.models import Outbox, Owner, Widget
 from src.data.python.postgresql.config import engine_from_file
 
@@ -78,7 +78,7 @@ class DatabaseTest(unittest.TestCase):
             )
             self.assertIsNone(stored.optional_text)
             self.assertEqual(stored.owner.widgets, [stored])
-        app = create_app(self.engine)
+        app = GetWidgets(self.engine).app
         client = TestClient(app)
         self.assertEqual(client.get("/readyz").json(), {"ready": True})
         response = client.get("/database/widgets")
@@ -142,7 +142,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(null_value.exception.orig.sqlstate, "23502")
 
     def test_service_process_connects_to_injected_postgres(self):
-        server = Path("src/apis/examples/python/database_server").resolve()
+        server = Path("src/apis/examples/python/server").resolve()
         log = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"]) / "service.log"
         with log.open("w") as output:
             process = subprocess.Popen(
@@ -151,7 +151,7 @@ class DatabaseTest(unittest.TestCase):
             try:
                 deadline = time.monotonic() + 20
                 while time.monotonic() < deadline:
-                    match = re.search(r"http://127\.0\.0\.1:(\d+)", log.read_text())
+                    match = re.search(r"http://0\.0\.0\.0:(\d+)", log.read_text())
                     if match:
                         try:
                             with urlopen(
