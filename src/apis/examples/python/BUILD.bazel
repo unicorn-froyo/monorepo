@@ -1,5 +1,5 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//tools:platform_transition.bzl", "platform_target")
 load("//tools/coverage/python:index.bzl", "py_coverage_test")
 load("//tools/deploy/api:index.bzl", "deploy_api")
@@ -54,7 +54,52 @@ py_format_test(
 py_typecheck_test(
     name = "get_widgets_example_py_typecheck_test",
     srcs = glob(["*.py"]),
-    deps = [":server"],
+    deps = [
+        ":database_app",
+        ":server",
+        "//src/data/python/postgresql:lib",
+    ],
+)
+
+py_library(
+    name = "database_app",
+    srcs = ["database_app.py"],
+    deps = [
+        ":get_widgets_example_py_lib",
+        "//src/data/example/widgets/python:lib",
+        "//third_party/pypi:postgresql",
+    ],
+)
+
+py_coverage_test(
+    name = "database_integration_test",
+    size = "large",
+    timeout = "long",
+    srcs = [
+        "database_test.py",
+        "//src/apis/python:abstract_api_base_test.py",
+        "//src/data/python/postgresql:config_test.py",
+    ],
+    data = [":database_server"],
+    postgres = "//src/data/example/widgets:postgres",
+    source_targets = [
+        ":database_app",
+        "//src/data/python/postgresql:lib",
+    ],
+    deps = [
+        ":database_app",
+        "//src/data/python/postgresql:lib",
+    ],
+)
+
+py_binary(
+    name = "database_server",
+    srcs = ["database_server.py"],
+    deps = [
+        ":database_app",
+        "//src/data/python/postgresql:lib",
+        "//third_party/pypi:uvicorn",
+    ],
 )
 
 py_binary(

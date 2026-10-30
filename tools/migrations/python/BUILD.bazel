@@ -1,0 +1,56 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//tools/coverage/python:index.bzl", "py_coverage_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/python:index.bzl", "py_format_test", "py_lint_test", "py_typecheck_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "lib",
+    srcs = ["schema.py"],
+    deps = ["//third_party/pypi:sqlfluff"],
+)
+
+py_coverage_test(
+    name = "unit_test",
+    srcs = ["schema_test.py"],
+    data = ["//tools/migrations/flyway:sqlfluff.cfg"],
+    source_targets = [":lib"],
+    deps = [":lib"],
+)
+
+py_lint_test(
+    name = "py_lint_test",
+    srcs = glob(["*.py"]),
+)
+
+py_format_test(
+    name = "py_format_test",
+    srcs = glob(["*.py"]),
+)
+
+py_typecheck_test(
+    name = "py_typecheck_test",
+    srcs = glob(["*.py"]),
+    deps = [":lib"],
+)
+
+bzl_lint_test(
+    name = "bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)
+
+py_binary(
+    name = "schema_test",
+    srcs = ["schema.py"],
+    main = "schema.py",
+    deps = ["//third_party/pypi:sqlfluff"],
+)
+
+exports_files(["schema.py"])

@@ -1,0 +1,31 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/migrations/flyway:index.bzl", "flyway_migrations", "flyway_schema_test")
+load("//tools/testing/postgresql:index.bzl", "postgresql_dev", "postgresql_fixture")
+
+package(default_visibility = ["//visibility:public"])
+
+flyway_migrations(
+    name = "schema",
+    srcs = glob(["migrations/*.sql"]),
+    schema = "widgets",
+)
+
+flyway_schema_test(
+    name = "schema_test",
+    migrations = ":schema",
+)
+
+postgresql_fixture(
+    name = "postgres",
+    migrations = ":schema",
+)
+
+bzl_lint_test(
+    name = "bzl_lint_test",
+    data = ["BUILD.bazel"],
+)
+
+postgresql_dev(
+    name = "dev",
+    fixture = ":postgres",
+)
