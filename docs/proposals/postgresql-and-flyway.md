@@ -1,4 +1,4 @@
-# PostgreSQL access and shared Flyway migrations
+# Native PostgreSQL ORMs and shared Flyway migrations
 
 - Status: **Direction approved; feasibility and implementation proposed**
 - Date: 2026-10-29
@@ -6,7 +6,7 @@
 
 ## Decision and purpose
 
-Use PostgreSQL with established, idiomatic SQL libraries in each application
+Use PostgreSQL with established, idiomatic ORMs in each application
 language. Use Flyway as the shared schema migration runner, independently of
 application runtimes. Provide containerized PostgreSQL for service integration
 tests and local development through Bazel.
@@ -15,7 +15,11 @@ This replaces the proposed protobuf/DynamoDB repository generator in
 [the original design](protobuf-dynamodb-data-access.md). Protobuf remains available for
 API contracts or specific binary payloads, but is not the canonical database
 schema and does not generate persistence APIs. Reviewed SQL migrations define
-database structure. Applications retain their native transaction APIs.
+database structure. Applications retain their ORM's native transaction APIs.
+
+Each service owns its database or a clearly bounded schema. Sharing a migration
+standard does not require services to share tables. Cross-language fixtures prove
+interoperability without granting production services access to each other's data.
 
 The feasibility work must establish reproducible builds, a practical developer
 workflow, safe migrations, and interoperability across all six existing languages.
@@ -24,25 +28,39 @@ results. The spike must publish measurements before production adoption.
 
 ## Application libraries
 
-Adopt these SQL clients as the defaults. These are established ecosystem choices,
+Adopt these ORMs as the defaults. These are established ecosystem choices,
 not a claim that a single popularity ranking applies across every language.
 Pin exact compatible versions during implementation in the existing ecosystem
 dependency definitions and lockfiles under `third_party/`.
 
-| Language | Library and dependency | Intended usage |
+| Language | ORM and dependency | PostgreSQL integration |
 | --- | --- | --- |
-| Go | [pgx v5](https://github.com/jackc/pgx), `github.com/jackc/pgx/v5` | Native pgx queries and transactions; `pgxpool` for pooling. |
-| Java | [pgJDBC](https://jdbc.postgresql.org/), `org.postgresql:postgresql` | JDBC prepared statements and transactions; integrate with the existing Spring stack where appropriate. |
-| Python | [Psycopg 3](https://www.psycopg.org/psycopg3/), `psycopg` | Typed parameterized SQL; sync or async APIs as appropriate; `psycopg_pool` for pooling. |
-| Ruby | [ruby-pg](https://github.com/ged/ruby-pg), gem `pg` | Parameterized SQL and native connection/transaction APIs; Active Record may use this driver in Rails services. |
-| Rust | [SQLx](https://github.com/transact-rs/sqlx), crate `sqlx` | PostgreSQL queries, transactions, and pooling with the existing Tokio runtime. Use runtime queries initially so builds require no live database. |
-| TypeScript | [node-postgres](https://node-postgres.com/), package `pg` | Parameterized SQL, `Pool`, and transactions on a checked-out client; add `@types/pg` if required by the pinned release. |
+| Go | [GORM](https://gorm.io/docs/), `gorm.io/gorm` and `gorm.io/driver/postgres` | GORM models, associations, and transactions; PostgreSQL dialector backed by pgx. |
+| Java | [Hibernate with Spring Data JPA](https://docs.spring.io/spring-data/jpa/reference/), Spring Boot Data JPA starter | Hibernate entities and JPA repositories; [pgJDBC](https://jdbc.postgresql.org/) driver and Spring-managed pooling/transactions. Pin versions compatible with the existing Spring stack. |
+| Python | [SQLAlchemy ORM](https://docs.sqlalchemy.org/en/21/orm/), `sqlalchemy` | [Psycopg 3](https://www.psycopg.org/psycopg3/), `psycopg`, underneath; SQLAlchemy sessions, relationships, transactions, and pooling. |
+| Ruby | [Active Record](https://guides.rubyonrails.org/active_record_basics.html), `activerecord` supplied by Rails | [ruby-pg](https://github.com/ged/ruby-pg), gem `pg`, underneath; Rails models, associations, transactions, and connection pooling. |
+| Rust | [SeaORM](https://www.sea-ql.org/SeaORM/), crate `sea-orm` | PostgreSQL backend with Tokio-compatible runtime/TLS features; async entities, relationships, transactions, and pooling. |
+| TypeScript | [Prisma ORM](https://docs.prisma.io/docs/orm/overview/introduction/what-is-prisma), `prisma` and `@prisma/client` | Generated typed client, relations, and transactions. Select and pin the PostgreSQL adapter required by the chosen release; use node-postgres where supported. |
 
-SQLx is a SQL toolkit rather than an ORM. Its migration facilities are not used;
-Flyway owns migration execution for every language. Java and Ruby pool integration
-must be explicit in their implementation PRs: pgJDBC and ruby-pg alone do not
-define the application's pooling policy. Do not introduce a shared repository
-generator or require applications to use an ORM.
+The ORMs provide application persistence; Flyway alone owns schema migration
+execution. Do not introduce a shared repository generator. Application APIs may
+use ORM relationships and queries directly, with parameterized SQL escape hatches
+where necessary. Bound pool sizes and document ownership of sessions/connections;
+transactions must use the same ORM transaction context throughout an operation.
+
+Disable competing schema mutation paths: Rails migrations and schema loading,
+Hibernate automatic DDL updates, SQLAlchemy `create_all` and Alembic migrations,
+GORM `AutoMigrate`, SeaORM migration/schema-sync facilities, and Prisma migration
+or schema-push commands. Hibernate schema validation may remain enabled. Do not
+let framework test setup silently replace Flyway with an ORM-created schema.
+
+SQL migrations and ORM mappings are separate artifacts and must stay aligned.
+Integration tests build a database using Flyway and exercise actual ORM models,
+relationships, constraints, and transaction behavior. For
+[Prisma's external migration workflow](https://docs.prisma.io/docs/orm/prisma-schema/introspection),
+prove introspection and client generation under Bazel early, using the pinned
+release's supported commands. If that release cannot support Flyway-owned SQL,
+revisit the TypeScript ORM before expanding adoption.
 
 Language APIs may differ. The shared requirements are correct SQL types, explicit
 transaction boundaries, parameter binding, bounded pools/timeouts, TLS in deployed
@@ -165,17 +183,21 @@ artifacts. Versioned migration SQL is declared Bazel runtime data.
 
 Use the existing language test, lint, formatting, typing, and coverage rules for
 application and tool code equally. Any Node tooling is authored in TypeScript.
-No source-generation step may connect to a developer's database. If SQLx checked
-query macros are adopted later, their offline metadata needs a separate
-Bazel-managed generation and validation workflow.
+No source-generation step may connect to a developer's database. ORM generation
+uses declared inputs and pinned tools; introspection uses only a disposable
+database migrated from declared SQL. Expose introspection as an explicit Bazel
+workflow that produces reviewable mapping inputs, then generate clients without
+a live database during ordinary builds. CI must detect stale generated mappings
+or schema inputs. Do not check in emitted runtime client code merely to avoid
+hermetic generation.
 
 ## Feasibility plan and delivery
 
 | Stage | Work and deliverable | Exit gate |
 | --- | --- | --- |
-| 0. Pin and package | Select supported PostgreSQL and Flyway releases, verify edition/license and required capabilities, package all runtime dependencies, and build a minimal schema plus container fixture. | Reproducible macOS arm64 and Linux amd64 execution; record arm64 Linux support. No paid service or account required for the selected basic workflow. |
+| 0. Pin and package | Select supported PostgreSQL and Flyway releases, verify edition/license and required capabilities, package all runtime dependencies, and build a minimal schema plus container fixture. Prove Prisma's external migration, introspection, and hermetic generation workflow. | Reproducible macOS arm64 and Linux amd64 execution; record arm64 Linux support. No paid service or account required for the selected basic workflow. Prisma can consume Flyway-managed SQL without owning migrations. |
 | 1. Prove migration safety | Implement history validation, concurrent-runner, interrupted-runner, transactional failure, and non-transactional recovery tests. Publish a recovery runbook. | All safety cases below pass. |
-| 2. Prove language access | Add dependencies and a small SQL integration example in each of the six languages, using the same fixture schema. | All clients pass value, transaction, and schema compatibility contracts. |
+| 2. Prove ORM access | Add ORM/driver dependencies and an integration example in each of the six languages, using the same Flyway fixture schema. Exercise models, relationships, transactions, and mapping validation. | All six ORMs pass value, relationship, transaction, and schema compatibility contracts. No ORM changes the schema during startup or test setup. |
 | 3. Measure deployment behavior | Run the benchmarks below and demonstrate expand/backfill/contract under service traffic. Publish raw reports and a decision record. | Correctness gates pass; performance budgets pass or receive an explicit evidence-based revision before adoption. |
 | 4. Adopt one service | Assign DB ownership, wire the migration deployment job, document credentials and recovery, and deploy one bounded workload. | Staging exercise succeeds, owner signs off on reports, and monitoring and recovery are operational. |
 
@@ -211,6 +233,7 @@ and achieved rate, p50/p95/p99 latency, errors, lock waits, CPU, and memory.
 | Interruption and recovery | Terminate runners before commit, after commit, and during a concurrent-index migration. Twenty repetitions per case; recovered schema/history agree, no duplicate effects, and any leftover invalid index is diagnosed and recovered using the runbook. |
 | Fixture isolation | Run 12 service suites concurrently for 20 rounds. No cross-suite data visibility, port collisions, or resource leaks after normal/failure cleanup. Simulated hard-kill resources are discoverable by labels and removed by the recovery target. |
 | Language interoperability | All six clients read values written by every other client: 36 writer/reader pairs. Exact values survive, including bigint and numeric edge cases; intentional timestamp limits are checked. |
+| ORM mappings and relationships | Each ORM loads and updates an order with multiple line items and an owner through mapped relationships. Foreign-key, unique, and NULL constraints produce expected errors. A deliberately incompatible column change fails mapping validation or an integration query in all six suites. Schema remains unchanged after ORM startup and test setup. |
 | Transaction contract | Each language commits and rolls back a three-table order/inventory/outbox transaction. In 1,000 competing attempts against inventory 100, exactly 100 reservations succeed and outbox/order counts match. Retry policy handles serialization failures without duplicating business effects. |
 | Rolling schema change | Old and new service versions operate during additive DDL, resumable backfill, and concurrent index creation. Zero schema-related errors or invariant violations; achieved throughput >= 99% of offered load and p95 latency <= 1.2x the no-migration baseline. |
 | Bounded blocking | Hold a conflicting lock; migration fails within a configured 2 s lock timeout plus <= 3 s CLI/reporting allowance. No later migration executes; application traffic recovers after lock release. |
@@ -220,7 +243,7 @@ Freeze SQL, indexes, pool sizes, and retry policies for comparisons. Run the tra
 case separately per client rather than treating language-to-language latency as a
 parity requirement. Define the no-migration baseline on the identical populated
 database and service build. Use SQL catalog assertions and business invariants
-in addition to process exit codes. Driver performance differences are reported;
+in addition to process exit codes. ORM/driver performance differences are reported;
 shared correctness and operational budgets are the adoption requirements.
 
 ## Adoption decision and remaining work
@@ -228,10 +251,10 @@ shared correctness and operational budgets are the adoption requirements.
 Publish a results document linked from this proposal with pass/fail per gate,
 raw benchmark artifacts, known limitations, recovery transcripts, and the exact
 Bazel commands. There are no results yet. Do not describe Flyway integration,
-container fixtures, or the client libraries as implemented until those stages land.
+container fixtures, or the ORM integrations as implemented until those stages land.
 
 Adopt after the safety and all-language gates pass and the pilot demonstrates
-the expected migration/deployment workflow. If a driver fails integration, resolve
+the expected migration/deployment workflow. If an ORM or driver fails integration, resolve
 or explicitly revise that language's choice. If Flyway cannot meet the required
 workflow in the selected edition, reassess the tool rather than build a custom
 migration engine. Performance-budget changes require published evidence and a
