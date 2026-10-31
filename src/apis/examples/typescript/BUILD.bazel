@@ -123,7 +123,6 @@ ts_image(
     },
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-typescript:latest"],
-    tags = ["manual"],
     tars = [":application_layer"],
 )
 

@@ -86,7 +86,6 @@ java_image(
     entrypoint = "/app/server",
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-java:latest"],
-    tags = ["manual"],
 )
 
 deploy_api(

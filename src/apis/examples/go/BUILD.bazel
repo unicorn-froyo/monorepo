@@ -97,7 +97,6 @@ go_image(
     env = {"GIN_MODE": "release"},
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-go:latest"],
-    tags = ["manual"],
     tars = [":application_layer"],
 )
 

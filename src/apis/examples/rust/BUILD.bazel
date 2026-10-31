@@ -86,7 +86,6 @@ rust_test(
 rs_package(
     name = "application_layer",
     binary = ":server",
-    tags = ["manual"],
     target_compatible_with = ["@platforms//os:linux"],
 )
 
@@ -94,7 +93,6 @@ rs_image(
     name = "get_widgets_example_oci",
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-rust:latest"],
-    tags = ["manual"],
     target_compatible_with = ["@platforms//os:linux"],
     tars = [":application_layer"],
 )
