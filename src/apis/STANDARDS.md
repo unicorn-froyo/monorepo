@@ -12,8 +12,10 @@ copying it into each endpoint.
   particular cloud provider.
 - Use the language's shared API foundation under `src/apis/<language>/` and
   register routes there. Examples under `src/apis/examples/` demonstrate the
-  contract; each serves `GET /widgets` on port 8080 and returns `202` with an
-  empty JSON array.
+  contract; each serves `GET /widgets` on port 8080. Stub examples return `202`
+  with an empty JSON array. The database-backed Go example returns `200` with
+  persisted widgets, or `503` when its database is not configured; database
+  integration extends the existing resource endpoint.
 - Build and test through Bazel. Package example services as OCI-compatible
   images, keeping image targets `manual` so `bazelisk build //...` does not
   load them.

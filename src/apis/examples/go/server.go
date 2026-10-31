@@ -1,22 +1,26 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"context"
+	"os"
+
+	"github.com/unicorn-froyo/monorepo/src/apis/go/server"
+	widgets "github.com/unicorn-froyo/monorepo/src/data/example/widgets/go"
+	"github.com/unicorn-froyo/monorepo/src/data/go/postgresql"
 )
 
-// Keep process-level effects replaceable so main's wiring can be tested
-// without opening a production port or terminating the test process.
-var listenAndServe = (*http.Server).ListenAndServe
-var logFatal = log.Fatal
-
-func newServer() *http.Server {
-	return &http.Server{
-		Addr:    ":8080",
-		Handler: newHandler(),
+// run owns application dependencies until the HTTP server has stopped.
+func run(ctx context.Context, address string) error {
+	var store widgetStore
+	if path := os.Getenv("POSTGRES_CONNECTION_FILE"); path != "" {
+		database, err := postgresql.Open(path)
+		if err != nil {
+			return err
+		}
+		// Open supplies a concrete database/sql pool, never a transaction handle.
+		pool, _ := database.DB()
+		defer pool.Close()
+		store = widgets.NewStore(database)
 	}
-}
-
-func main() {
-	logFatal(listenAndServe(newServer()))
+	return server.Serve(ctx, server.New(address, newHandler(store)))
 }

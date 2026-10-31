@@ -33,7 +33,10 @@ bzl_lint_test(
 test_suite(
     name = "integration_tests",
     tests = [
+        "//src/apis/examples/go:get_widgets_example_go_coverage_test",
         "//src/apis/examples/python:database_integration_test",
+        "//src/data/example/widgets/go:coverage_test",
+        "//src/data/go/postgresql:coverage_test",
         "//tools/testing/python:lifecycle_integration_test",
     ],
 )
