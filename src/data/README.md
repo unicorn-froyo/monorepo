@@ -97,11 +97,11 @@ to that path in a second shell, then run:
 bazelisk run //src/apis/examples/python:server
 ```
 
-The existing service listens on port 8080, retains `GET /widgets` returning
-`202 []`, and exposes `/database/widgets` and `/readyz`. The shared API base
-uses the connection file when configured; there is no separate database app or
-server. Without database configuration, the database query endpoint returns 503
-and ordinary `/widgets` behavior remains available.
+The service listens on port 8080. `GET /widgets` returns `200` with stored
+widgets ordered by ID, including each widget's ID, name, and owner name; an empty
+database returns `[]`. `/readyz` checks database connectivity when configured.
+The shared API base uses the connection file when configured. Without database
+configuration, `/widgets` returns 503.
 
 The shared `AbstractApiBase` creates a bounded SQLAlchemy engine from
 `POSTGRES_CONNECTION_FILE` during FastAPI startup and disposes it on shutdown.

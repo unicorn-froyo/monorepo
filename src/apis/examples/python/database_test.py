@@ -52,21 +52,26 @@ class DatabaseTest(unittest.TestCase):
         )
 
     def test_database_widgets_http(self):
-        owner = Owner(id=uuid4(), name="account")
-        widget = self.widget(owner)
-        identifier = widget.id
-        with Session(self.engine) as session, session.begin():
-            session.add(widget)
         app = GetWidgets(self.engine).app
         client = TestClient(app)
+        empty = client.get("/widgets")
+        self.assertEqual(empty.status_code, 200)
+        self.assertEqual(empty.json(), [])
+        owner = Owner(id=uuid4(), name="account")
+        widgets = [self.widget(owner), self.widget(owner)]
+        widgets[1].name = "second widget"
+        expected = [
+            {"id": str(widget.id), "name": widget.name, "owner": "account"}
+            for widget in sorted(widgets, key=lambda widget: widget.id)
+        ]
+        with Session(self.engine) as session, session.begin():
+            session.add_all(widgets)
         self.assertEqual(client.get("/readyz").json(), {"ready": True})
-        response = client.get("/database/widgets")
-        self.assertEqual(
-            response.json(), [{"id": str(identifier), "name": "雪☃", "owner": "account"}]
-        )
+        response = client.get("/widgets")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected)
         self.assertEqual(response.headers["x-content-type-options"], "nosniff")
-        self.assertEqual(client.get("/widgets").status_code, 202)
-        self.assertEqual(client.get("/widgets").json(), [])
+        self.assertEqual(client.get("/database/widgets").status_code, 404)
         self.assertEqual(client.get("/missing").status_code, 404)
         secure = TestClient(app, base_url="https://testserver")
         self.assertEqual(

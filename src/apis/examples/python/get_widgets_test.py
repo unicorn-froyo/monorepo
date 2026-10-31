@@ -13,10 +13,12 @@ class TestGetWidgets(TestCase):
     """Widgets API tests."""
 
     def test_get_widgets(self):
-        """The HTTP endpoint returns an accepted empty collection."""
-        response = TestClient(app).get("/widgets")
+        """An empty database returns an empty collection with the shared headers."""
+        with patch("src.apis.python.abstract_api_base.Session") as session:
+            session.return_value.__enter__.return_value.scalars.return_value = []
+            response = TestClient(GetWidgets(MagicMock()).app).get("/widgets")
 
-        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.status_code, 200)
         self.assertListEqual(response.json(), [])
         self.assertEqual(response.headers["x-content-type-options"], "nosniff")
         self.assertEqual(response.headers["x-frame-options"], "DENY")
@@ -39,7 +41,7 @@ class TestGetWidgets(TestCase):
     def test_optional_database_is_explicit(self):
         client = TestClient(app)
         self.assertEqual(client.get("/readyz").json(), {"ready": True})
-        self.assertEqual(client.get("/database/widgets").status_code, 503)
+        self.assertEqual(client.get("/widgets").status_code, 503)
 
     def test_injected_engine_is_used_by_the_same_application(self):
         engine = MagicMock()
@@ -48,12 +50,13 @@ class TestGetWidgets(TestCase):
                 SimpleNamespace(id="widget", name="display", owner=SimpleNamespace(name="owner"))
             ]
             client = TestClient(GetWidgets(engine).app)
+            response = client.get("/widgets")
+            self.assertEqual(response.status_code, 200)
             self.assertEqual(
-                client.get("/database/widgets").json(),
+                response.json(),
                 [{"id": "widget", "name": "display", "owner": "owner"}],
             )
             self.assertEqual(client.get("/readyz").json(), {"ready": True})
-            self.assertEqual(client.get("/widgets").json(), [])
             session.assert_called_once_with(engine)
             engine.connect.return_value.__enter__.return_value.execute.assert_called_once()
 
