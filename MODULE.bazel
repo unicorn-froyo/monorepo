@@ -1,5 +1,8 @@
 module(name = "com_unicorn_froyo")
 
+postgresql = use_extension("//tools/testing/postgresql:repositories.bzl", "postgresql")
+use_repo(postgresql, "postgresql_darwin_amd64", "postgresql_darwin_arm64v8", "postgresql_linux_amd64", "postgresql_linux_arm64v8")
+
 bazel_dep(name = "aspect_rules_js", version = "3.5.1")
 bazel_dep(name = "aspect_rules_ts", version = "3.10.1")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
@@ -98,15 +101,28 @@ use_repo(ruby, "bundle", "ruby", "ruby_toolchains")
 register_toolchains("@ruby_toolchains//:all")
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.artifact(
+    name = "maven",
+    artifact = "flyway-commandline",
+    # Keep the PostgreSQL CLI; do not fetch drivers for every supported database.
+    exclusions = ["*:*"],
+    group = "org.flywaydb",
+    version = "11.20.3",
+)
 maven.install(
     name = "maven",
     artifacts = [
         "com.google.googlejavaformat:google-java-format:1.28.0",
+        "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:2.20.1",
+        "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.1",
         "com.puppycrawl.tools:checkstyle:10.21.4",
         "jakarta.servlet:jakarta.servlet-api:6.1.0",
         "junit:junit:4.13.2",
         "org.jacoco:org.jacoco.cli:0.8.13",
         "org.jacoco:org.jacoco.agent:0.8.13:runtime",
+        "org.flywaydb:flyway-core:11.20.3",
+        "org.flywaydb:flyway-database-postgresql:11.20.3",
+        "org.postgresql:postgresql:42.7.14",
         "org.junit.jupiter:junit-jupiter-api:5.12.2",
         "org.junit.jupiter:junit-jupiter-engine:5.12.2",
         "org.junit.platform:junit-platform-console:1.12.2",
@@ -124,6 +140,15 @@ maven.install(
 use_repo(maven, "maven")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "postgres",
+    digest = "sha256:538bdb8c6b278f2f09070a4d79f04a83363a795ed23ec0d92d6b70cabc398eae",
+    image = "docker.io/library/postgres",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64/v8",
+    ],
+)
 oci.pull(
     name = "java_base",
     digest = "sha256:f37956012e0cb88400e5b3689aeae2d2d735364c1922ae2225536163b5a99f56",
@@ -177,6 +202,9 @@ use_repo(
     "node_base",
     "node_base_linux_amd64",
     "node_base_linux_arm64_v8",
+    "postgres",
+    "postgres_linux_amd64",
+    "postgres_linux_arm64_v8",
     "python_base",
     "python_base_linux_amd64",
     "python_base_linux_arm64_v8",

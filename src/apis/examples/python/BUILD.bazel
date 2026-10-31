@@ -24,7 +24,9 @@ py_binary(
     main = ":get_widgets.py",
     deps = [
         "//src/apis/python:api_base_py_lib",
+        "//src/data/example/widgets/python:lib",
         "//third_party/pypi:fastapi",
+        "//third_party/pypi:postgresql",
     ],
 )
 
@@ -54,7 +56,32 @@ py_format_test(
 py_typecheck_test(
     name = "get_widgets_example_py_typecheck_test",
     srcs = glob(["*.py"]),
-    deps = [":server"],
+    deps = [
+        ":server",
+        "//src/data/python/postgresql:lib",
+    ],
+)
+
+py_coverage_test(
+    name = "database_integration_test",
+    size = "large",
+    timeout = "long",
+    srcs = [
+        "database_test.py",
+        "get_widgets_test.py",
+        "//src/apis/python:abstract_api_base_test.py",
+        "//src/data/python/postgresql:config_test.py",
+    ],
+    data = [":server"],
+    postgres = "//src/data/example/widgets:postgres",
+    source_targets = [
+        ":get_widgets_example_py_lib",
+        "//src/data/python/postgresql:lib",
+    ],
+    deps = [
+        ":get_widgets_example_py_lib",
+        "//src/data/python/postgresql:lib",
+    ],
 )
 
 py_binary(
@@ -62,6 +89,7 @@ py_binary(
     srcs = ["server.py"],
     deps = [
         ":get_widgets_example_py_lib",
+        "//src/data/python/postgresql:lib",
         "//third_party/pypi:uvicorn",
     ],
 )

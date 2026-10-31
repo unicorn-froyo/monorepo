@@ -4,6 +4,25 @@ load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 
 package(default_visibility = ["//visibility:public"])
 
+py_library(
+    name = "postgresql",
+    deps = [
+        requirement("psycopg"),
+        requirement("psycopg-binary"),
+        requirement("sqlalchemy"),
+    ],
+)
+
+py_library(
+    name = "docker",
+    deps = [requirement("docker")],
+)
+
+py_library(
+    name = "sqlfluff",
+    deps = [requirement("sqlfluff")],
+)
+
 compile_pip_requirements(
     name = "requirements",
     src = "requirements.in",

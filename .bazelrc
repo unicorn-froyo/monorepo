@@ -5,3 +5,4 @@ build --java_language_version=21
 build --tool_java_runtime_version=remotejdk_21
 build --tool_java_language_version=21
 test --test_output=errors
+test --test_env=DOCKER_HOST

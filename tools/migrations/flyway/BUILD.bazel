@@ -1,0 +1,29 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["sqlfluff.cfg"])
+
+java_binary(
+    name = "cli",
+    main_class = "org.flywaydb.commandline.Main",
+    runtime_deps = [
+        "@maven//:com_fasterxml_jackson_dataformat_jackson_dataformat_toml",
+        "@maven//:com_fasterxml_jackson_datatype_jackson_datatype_jsr310",
+        "@maven//:org_flywaydb_flyway_commandline",
+        "@maven//:org_flywaydb_flyway_database_postgresql",
+        "@maven//:org_postgresql_postgresql",
+    ],
+)
+
+bzl_lint_test(
+    name = "flyway_bzl_lint_test",
+    data = glob(
+        [
+            "*.bazel",
+            "*.bzl",
+        ],
+        allow_empty = True,
+    ),
+)

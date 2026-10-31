@@ -3,6 +3,7 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@rules_python//python:defs.bzl", "PyInfo")
 load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
+load("//tools/testing/postgresql:providers.bzl", "PostgresqlFixtureInfo")
 
 def _py_coverage_test(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
@@ -15,14 +16,13 @@ def _py_coverage_test(ctx):
         "tests": [f.short_path for f in ctx.files.srcs],
         "imports": imports.to_list(),
     }))
+    command = [ctx.executable._py_coverage_bin.short_path, "--manifest", manifest.short_path, "--config", ctx.file._coverage_config.short_path, "--minimum", str(MINIMUM_LINE_COVERAGE)]
+    if ctx.attr.postgres:
+        fixture = ctx.attr.postgres[PostgresqlFixtureInfo]
+        command = [fixture.runner.short_path, "--fixture", fixture.manifest.short_path, "--"] + command
     ctx.actions.write(
         script,
-        "#!/bin/sh\nset -eu\nexec %s --manifest %s --config %s --minimum %s\n" % (
-            shell.quote(ctx.executable._py_coverage_bin.short_path),
-            shell.quote(manifest.short_path),
-            shell.quote(ctx.file._coverage_config.short_path),
-            MINIMUM_LINE_COVERAGE,
-        ),
+        "#!/bin/sh\nset -eu\nexec %s\n" % " ".join([shell.quote(arg) for arg in command]),
         is_executable = True,
     )
     runfiles = ctx.runfiles(
@@ -32,11 +32,14 @@ def _py_coverage_test(ctx):
     runfiles = runfiles.merge(ctx.attr._py_coverage_bin[DefaultInfo].default_runfiles)
     for dep in runtime_deps + ctx.attr.data:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
+    if ctx.attr.postgres:
+        runfiles = runfiles.merge(ctx.attr.postgres[DefaultInfo].default_runfiles)
     return [DefaultInfo(executable = script, runfiles = runfiles)]
 
-py_coverage_test = rule(
+_py_coverage_rule_test = rule(
     implementation = _py_coverage_test,
     attrs = {
+        "postgres": attr.label(providers = [PostgresqlFixtureInfo]),
         "srcs": attr.label_list(
             allow_files = [".py"],
             providers = [PyInfo],
@@ -67,3 +70,8 @@ py_coverage_test = rule(
     },
     test = True,
 )
+
+def py_coverage_test(name, postgres = None, tags = None, **kwargs):
+    """Run normal coverage, optionally with an isolated migrated PostgreSQL DB."""
+    tags = list(tags or [])
+    _py_coverage_rule_test(name = name, postgres = postgres, tags = tags, **kwargs)
