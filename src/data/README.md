@@ -140,6 +140,10 @@ native `*gorm.DB` with a five-connection pool. It authenticates against PostgreS
 before returning, disables SQL logging, does not migrate tables, and uses query contexts through
 `WithContext`. Callers close the underlying `database/sql` pool when finished.
 The existing Go server owns the pool and supplies a widget store when configured.
+The shared `src/apis/go/server` package provides `server.New(address, handler)`
+and context-controlled serving. The example's `run` function opens and closes its
+database pool; the thin `main.go` entrypoint handles flags, termination signals,
+and process exit after `run` returns. No mutable startup hooks are used.
 HTTP handlers depend on the store's `List` and `Ready` operations; GORM queries
 live in `example/widgets/go/store.go`. As in Python, `/database/widgets` returns
 widgets ordered by ID with owner names, and `/readyz` checks connectivity.

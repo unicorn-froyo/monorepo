@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,30 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestMainEntrypoint(t *testing.T) {
+func TestRunWithoutDatabase(t *testing.T) {
 	t.Setenv("POSTGRES_CONNECTION_FILE", "")
-	originalListen, originalFatal := listenAndServe, logFatal
-	t.Cleanup(func() {
-		listenAndServe, logFatal = originalListen, originalFatal
-	})
-	want := errors.New("server stopped")
-	started, logged := false, false
-	listenAndServe = func(server *http.Server) error {
-		started = true
-		if server.Addr != ":8080" || server.Handler == nil {
-			t.Fatalf("unexpected server configuration: %+v", server)
-		}
-		return want
-	}
-	logFatal = func(values ...any) {
-		logged = true
-		if len(values) != 1 || values[0] != want {
-			t.Fatalf("logged %v, want server error", values)
-		}
-	}
-	main()
-	if !started || !logged {
-		t.Fatalf("main did not start server and report its error: started=%v logged=%v", started, logged)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := run(ctx, "127.0.0.1:0"); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -62,18 +44,6 @@ func TestHeaders(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestServerConfiguration(t *testing.T) {
-	server := newServer(nil)
-	if server.Addr != ":8080" {
-		t.Fatalf("server address = %q, want :8080", server.Addr)
-	}
-	response := httptest.NewRecorder()
-	server.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/widgets", nil))
-	if response.Code != http.StatusAccepted {
-		t.Fatalf("server status = %d, want %d", response.Code, http.StatusAccepted)
 	}
 }
 

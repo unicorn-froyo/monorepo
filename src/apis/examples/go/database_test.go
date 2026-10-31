@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -210,31 +211,40 @@ func TestApplicationPermissionsAndConstraints(t *testing.T) {
 	}
 }
 
-func TestDatabaseMainUsesExistingServer(t *testing.T) {
-	previousListen, previousFatal := listenAndServe, logFatal
-	t.Cleanup(func() { listenAndServe, logFatal = previousListen, previousFatal })
-	want := errors.New("server stopped")
-	logFatal = func(values ...any) {
-		if len(values) != 1 || values[0] != want {
-			t.Fatalf("unexpected failure: %v", values)
+func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
+	db := database(t)
+	count := func() int64 {
+		t.Helper()
+		var total int64
+		if err := db.Raw("SELECT count(*) FROM pg_stat_activity WHERE usename = current_user AND datname = current_database()").Scan(&total).Error; err != nil {
+			t.Fatal(err)
 		}
+		return total
 	}
-	listenAndServe = func(server *http.Server) error {
-		response := httptest.NewRecorder()
-		server.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/readyz", nil))
-		if response.Code != 200 {
-			t.Fatal("server did not connect to the fixture PostgreSQL")
-		}
-		return want
+	before := count()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
 	}
-	main()
+	defer listener.Close()
+	if err := run(context.Background(), listener.Addr().String()); err == nil {
+		t.Fatal("occupied HTTP address was accepted")
+	}
+	if after := count(); after != before {
+		t.Fatalf("startup leaked database connections: before=%d after=%d", before, after)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := run(ctx, "127.0.0.1:0"); err != nil {
+		t.Fatal(err)
+	}
+	if after := count(); after != before {
+		t.Fatalf("shutdown leaked database connections: before=%d after=%d", before, after)
+	}
 	t.Setenv("POSTGRES_CONNECTION_FILE", filepath.Join(t.TempDir(), "missing.json"))
-	logFatal = func(values ...any) {
-		if len(values) != 1 || values[0] == nil {
-			t.Fatalf("missing connection file not rejected: %v", values)
-		}
+	if err := run(context.Background(), "127.0.0.1:0"); err == nil {
+		t.Fatal("missing connection file not rejected")
 	}
-	main()
 }
 
 func TestGoServerProcessConnectsToPostgres(t *testing.T) {
@@ -266,7 +276,13 @@ func TestGoServerProcessConnectsToPostgres(t *testing.T) {
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { cancel(); command.Wait() }()
+	defer func() {
+		command.Process.Signal(os.Interrupt)
+		if err := command.Wait(); err != nil {
+			t.Errorf("Go server did not exit cleanly: %v", err)
+		}
+		cancel()
+	}()
 	client := http.Client{Timeout: time.Second}
 	for {
 		response, err := client.Get("http://" + address + "/readyz")
@@ -297,5 +313,17 @@ func TestGoServerProcessConnectsToPostgres(t *testing.T) {
 	}
 	if response.StatusCode != http.StatusOK || len(rows) != 1 || rows[0]["id"] != widgetID || rows[0]["name"] != "updated 雪" || rows[0]["owner"] != "account" {
 		t.Fatalf("Go server did not read live PostgreSQL data: status=%d rows=%v", response.StatusCode, rows)
+	}
+}
+
+func TestGoServerProcessRejectsMissingConnectionFile(t *testing.T) {
+	t.Setenv("POSTGRES_CONNECTION_FILE", filepath.Join(t.TempDir(), "missing.json"))
+	server := filepath.Join(os.Getenv("TEST_SRCDIR"), os.Getenv("TEST_WORKSPACE"), os.Getenv("GO_SERVER_PATH"))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, server, "--port=0").CombinedOutput()
+	var failure *exec.ExitError
+	if !errors.As(err, &failure) || failure.ExitCode() != 1 || !strings.Contains(string(output), "read PostgreSQL connection") {
+		t.Fatalf("invalid database configuration did not fail startup: error=%v output=%s", err, output)
 	}
 }

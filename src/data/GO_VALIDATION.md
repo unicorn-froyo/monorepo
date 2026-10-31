@@ -12,13 +12,15 @@ contexts, and transactions; Flyway owns migrations.
 ## Checks
 
 - `bazelisk build //...` passed.
-- `bazelisk test //...` passed: all 150 test targets, including Go and Python
+- `bazelisk test //...` passed: all 155 test targets, including Go and Python
   PostgreSQL integration tests. Unchanged results were cached.
 - Go configuration, model, and service coverage targets each enforce the
   repository's existing 100% aggregate line threshold and emit portable
   `lcov.info` plus raw `coverage.out`.
-- Configuration coverage is 38/38 lines, models/store 14/14, and HTTP/server
-  49/49. LCOV source records contain workspace-relative application paths.
+- Configuration coverage is 38/38 lines, models/store 14/14, handler/startup
+  39/39, and shared HTTP server 11/11. LCOV source records contain workspace-relative
+  application paths. The binary's thin `main.go` entrypoint is exercised by process
+  tests for successful startup, interrupt shutdown, and configuration failure.
 - Model tests validate table/column bindings and relationship metadata against
   the shared schema contract. Connection tests validate configuration failures,
   TLS policy, bounded pooling, and real PostgreSQL authentication failures.
@@ -32,6 +34,10 @@ contexts, and transactions; Flyway owns migrations.
   response headers. Its existing server entrypoint uses optional database
   configuration; no second app/server was introduced.
 - Startup owns the connection pool and gives the handler a widget store.
+  Shared transport construction and serving live in `src/apis/go/server`.
+  The example's `run` returns errors and closes the pool before `main` handles
+  process exit. Real connection-count checks verify cleanup after a listener
+  failure and cancellation. Startup uses no mutable function globals.
   GORM queries live in the data package. Store tests check owner loading, stable
   ordering, more than 100 rows, request cancellation, and closed-pool errors.
   Listing has no implicit 100-row cap, matching the Python endpoint.
