@@ -34,6 +34,7 @@ test_suite(
     name = "integration_tests",
     tests = [
         "//src/apis/examples/python:database_integration_test",
+        "//src/data/example/widgets/python:models_integration_test",
         "//tools/testing/python:lifecycle_integration_test",
     ],
 )

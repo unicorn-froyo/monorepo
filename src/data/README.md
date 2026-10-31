@@ -39,6 +39,13 @@ py_coverage_test(
 bazelisk test //tools/testing/postgresql:integration_tests
 ```
 
+Model persistence, relationships, transactions, constraints, and role permissions
+are tested alongside the mappings in
+[`example/widgets/python/models_test.py`](example/widgets/python/models_test.py).
+The API's `database_test.py` covers HTTP behavior, request-session cleanup, and
+server startup. Both suites use the migrated PostgreSQL fixture and are included
+in the integration suite above.
+
 The optional attribute starts PostgreSQL 17.10 as a foreground child process
 inside the Bazel test sandbox. Checksum-pinned Zonky binary distributions, including
 their libraries and SQL support files, are declared Bazel inputs for macOS/Linux
