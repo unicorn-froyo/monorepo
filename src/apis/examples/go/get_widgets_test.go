@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,12 +22,20 @@ func TestRunWithoutDatabase(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
+	handler := newHandler(widgets.NewStore(databaseWithWidgets(t)))
 	for _, scheme := range []string{"http", "https"} {
 		for _, path := range []string{"/widgets", "/missing"} {
 			t.Run(scheme+path, func(t *testing.T) {
 				request := httptest.NewRequest(http.MethodGet, scheme+"://example.com"+path, nil)
 				response := httptest.NewRecorder()
-				newHandler(nil).ServeHTTP(response, request)
+				handler.ServeHTTP(response, request)
+				wantStatus := http.StatusOK
+				if path == "/missing" {
+					wantStatus = http.StatusNotFound
+				}
+				if response.Code != wantStatus {
+					t.Fatalf("status = %d, want %d", response.Code, wantStatus)
+				}
 				for header, want := range map[string]string{
 					"X-Content-Type-Options": "nosniff",
 					"X-Frame-Options":        "DENY",
@@ -52,7 +62,7 @@ func TestGetWidgets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	request := httptest.NewRequest(http.MethodGet, "/widgets", nil)
 	response := httptest.NewRecorder()
-	newHandler(widgets.NewStore(database(t))).ServeHTTP(response, request)
+	newHandler(widgets.NewStore(databaseWithWidgets(t))).ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
@@ -60,10 +70,23 @@ func TestGetWidgets(t *testing.T) {
 	if got := response.Header().Get("X-Content-Type-Options"); got != "nosniff" {
 		t.Fatalf("X-Content-Type-Options = %q, want nosniff", got)
 	}
-	if response.Body.String() != "[]" {
-		t.Fatalf("body = %q, want %q", response.Body.String(), "[]")
+	var got []map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	want := []map[string]string{{"id": widgetID, "name": "雪☃", "owner": "account"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("widgets = %v, want seeded database records %v", got, want)
 	}
 	if contentType := response.Header().Get("Content-Type"); contentType != "application/json; charset=utf-8" {
 		t.Fatalf("Content-Type = %q, want application/json; charset=utf-8", contentType)
+	}
+}
+
+func TestGetWidgetsWithEmptyDatabase(t *testing.T) {
+	response := httptest.NewRecorder()
+	newHandler(widgets.NewStore(database(t))).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/widgets", nil))
+	if response.Code != http.StatusOK || response.Body.String() != "[]" {
+		t.Fatalf("empty database: status=%d body=%s", response.Code, response.Body.String())
 	}
 }

@@ -35,6 +35,10 @@ contexts, and transactions; Flyway owns migrations.
   configuration returns `503`; query failures return `500`. Shared response
   headers apply. `/database/widgets` is not registered. The server entrypoint
   uses the connection file; no second app/server was introduced.
+- Endpoint, header, and process tests seed a committed owner, widget, and outbox
+  record before constructing the handler/server. The main endpoint test asserts
+  the populated response's ID, Unicode name, and owner; empty-database behavior
+  is checked in a separate test.
 - Startup owns the connection pool and gives the handler a widget store.
   Shared transport construction and serving live in `src/apis/go/server`.
   The example's `run` returns errors and closes the pool before `main` handles

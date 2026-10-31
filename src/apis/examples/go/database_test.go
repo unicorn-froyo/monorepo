@@ -44,6 +44,16 @@ func database(t *testing.T) *gorm.DB {
 	return db
 }
 
+// databaseWithWidgets seeds committed records before constructing an HTTP server.
+func databaseWithWidgets(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := database(t)
+	if err := db.Transaction(insertExample); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
 func exampleWidget() widgets.Widget {
 	return widgets.Widget{
 		ID: widgetID, OwnerID: ownerID, Name: "雪☃", Version: 1<<60 + 1,
@@ -122,19 +132,13 @@ func TestNativeTransactionsAndExactTypes(t *testing.T) {
 }
 
 func TestDatabaseHTTPAndReadiness(t *testing.T) {
-	db := database(t)
+	db := databaseWithWidgets(t)
 	handler := newHandler(widgets.NewStore(db))
 	request := func(path string) *httptest.ResponseRecorder {
 		t.Helper()
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "https://example.com"+path, nil))
 		return response
-	}
-	if got := request("/widgets"); got.Code != 200 || got.Body.String() != "[]" {
-		t.Fatalf("empty result: %s", got.Body.String())
-	}
-	if err := db.Transaction(insertExample); err != nil {
-		t.Fatal(err)
 	}
 	response := request("/widgets")
 	var result []map[string]string
@@ -213,15 +217,30 @@ func TestApplicationPermissionsAndConstraints(t *testing.T) {
 
 func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
 	db := database(t)
+	applicationName := "cleanup-" + t.Name()
+	t.Setenv("PGAPPNAME", applicationName)
 	count := func() int64 {
 		t.Helper()
 		var total int64
-		if err := db.Raw("SELECT count(*) FROM pg_stat_activity WHERE usename = current_user AND datname = current_database()").Scan(&total).Error; err != nil {
+		if err := db.Raw("SELECT count(*) FROM pg_stat_activity WHERE application_name = ? AND datname = current_database()", applicationName).Scan(&total).Error; err != nil {
 			t.Fatal(err)
 		}
 		return total
 	}
-	before := count()
+	assertClosed := func() {
+		t.Helper()
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			remaining := count()
+			if remaining == 0 {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("run leaked %d database connections", remaining)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -230,17 +249,13 @@ func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
 	if err := run(context.Background(), listener.Addr().String()); err == nil {
 		t.Fatal("occupied HTTP address was accepted")
 	}
-	if after := count(); after != before {
-		t.Fatalf("startup leaked database connections: before=%d after=%d", before, after)
-	}
+	assertClosed()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := run(ctx, "127.0.0.1:0"); err != nil {
 		t.Fatal(err)
 	}
-	if after := count(); after != before {
-		t.Fatalf("shutdown leaked database connections: before=%d after=%d", before, after)
-	}
+	assertClosed()
 	t.Setenv("POSTGRES_CONNECTION_FILE", filepath.Join(t.TempDir(), "missing.json"))
 	if err := run(context.Background(), "127.0.0.1:0"); err == nil {
 		t.Fatal("missing connection file not rejected")
@@ -248,10 +263,7 @@ func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
 }
 
 func TestGoServerProcessConnectsToPostgres(t *testing.T) {
-	db := database(t)
-	if err := db.Transaction(insertExample); err != nil {
-		t.Fatal(err)
-	}
+	db := databaseWithWidgets(t)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
