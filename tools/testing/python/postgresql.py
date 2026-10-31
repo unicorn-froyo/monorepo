@@ -139,6 +139,17 @@ def grant_application(connection: dict, admin: str, password: str, bundle: dict)
         conn.execute("ALTER ROLE app SET statement_timeout TO '10s'")
 
 
+def load_image(path: Path, client, timeout: int):
+    """Allow cold image imports more time while preserving normal API deadlines."""
+    previous_timeout = client.api.timeout
+    try:
+        client.api.timeout = timeout
+        with path.open("rb") as archive:
+            return client.images.load(archive)[0]
+    finally:
+        client.api.timeout = previous_timeout
+
+
 @contextmanager
 def postgres(fixture: dict, root: Path, client):
     """Own every resource, including startup and migration failure cleanup."""
@@ -151,8 +162,7 @@ def postgres(fixture: dict, root: Path, client):
     network = client.networks.create(identity, labels={LABEL: identity})
     container = None
     try:
-        with Path(fixture["image"]).open("rb") as archive:
-            image = client.images.load(archive)[0]
+        image = load_image(Path(fixture["image"]), client, fixture["image_load_timeout_seconds"])
         timings["image_loaded_seconds"] = time.monotonic() - started
         container = client.containers.run(
             image.id,

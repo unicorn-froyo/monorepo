@@ -53,6 +53,10 @@ without `postgres` retain normal execution and caching, with no Docker/image
 dependency. Database tests use local/external execution requirements and bypass
 test result caching. A missing daemon fails the integration tests.
 
+`postgresql_fixture` allows 120 seconds for cold image imports, configured with
+`image_load_timeout_seconds`. SQL readiness and migrations have separate limits;
+other Docker API calls retain their 10-second timeout.
+
 The Docker client is the pinned Python SDK, not a host `docker` executable.
 The daemon must be accessible through `DOCKER_HOST` or `/var/run/docker.sock`.
 For Colima, for example, set `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`

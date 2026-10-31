@@ -5,7 +5,7 @@ load("//tools/migrations/flyway:index.bzl", "FlywayMigrationsInfo")
 load(":providers.bzl", "PostgresqlFixtureInfo")
 
 def _fixture(ctx):
-    if ctx.attr.startup_timeout_seconds <= 0 or ctx.attr.migration_timeout_seconds <= 0:
+    if min(ctx.attr.image_load_timeout_seconds, ctx.attr.startup_timeout_seconds, ctx.attr.migration_timeout_seconds) <= 0:
         fail("PostgreSQL fixture timeouts must be positive")
     bundle = ctx.attr.migrations[FlywayMigrationsInfo]
     manifest = ctx.actions.declare_file(ctx.label.name + ".fixture.json")
@@ -14,6 +14,7 @@ def _fixture(ctx):
         "image": ctx.file.image.short_path,
         "flyway": ctx.executable._flyway.short_path,
         "database": ctx.attr.database,
+        "image_load_timeout_seconds": ctx.attr.image_load_timeout_seconds,
         "startup_timeout_seconds": ctx.attr.startup_timeout_seconds,
         "migration_timeout_seconds": ctx.attr.migration_timeout_seconds,
     }))
@@ -31,6 +32,7 @@ postgresql_fixture = rule(
         "migrations": attr.label(providers = [FlywayMigrationsInfo], mandatory = True),
         "image": attr.label(default = "//tools/testing/postgresql:postgres_image", allow_single_file = [".tar"]),
         "database": attr.string(default = "testdb"),
+        "image_load_timeout_seconds": attr.int(default = 120),
         "startup_timeout_seconds": attr.int(default = 30),
         "migration_timeout_seconds": attr.int(default = 60),
         "_runner": attr.label(default = "//tools/testing/python:postgresql_runner", executable = True, cfg = "target"),

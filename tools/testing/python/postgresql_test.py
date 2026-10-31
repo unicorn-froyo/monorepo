@@ -34,6 +34,7 @@ class FixtureTest(unittest.TestCase):
             image=str(image),
             database="testdb",
             flyway="cli",
+            image_load_timeout_seconds=120,
             startup_timeout_seconds=1,
             migration_timeout_seconds=1,
         )
@@ -43,6 +44,22 @@ class FixtureTest(unittest.TestCase):
         self.container.logs.return_value = b"postgresql ready"
         self.client.containers.list.return_value = [self.container]
         self.connection = dict(host="localhost", port=5432, database="testdb")
+
+    def test_image_import_restores_api_timeout_on_success_and_failure(self):
+        self.client.api.timeout = 10
+
+        def loaded(archive):
+            self.assertEqual(self.client.api.timeout, 120)
+            self.assertEqual(archive.read(), b"oci")
+            return ["image"]
+
+        self.client.images.load.side_effect = loaded
+        self.assertEqual(pg.load_image(self.root / "image.tar", self.client, 120), "image")
+        self.assertEqual(self.client.api.timeout, 10)
+        self.client.images.load.side_effect = RuntimeError("import failed")
+        with self.assertRaisesRegex(RuntimeError, "import failed"):
+            pg.load_image(self.root / "image.tar", self.client, 120)
+        self.assertEqual(self.client.api.timeout, 10)
 
     def test_private_json_is_exclusive_and_restrictive(self):
         path = self.root / "secret.json"
