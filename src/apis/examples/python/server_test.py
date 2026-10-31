@@ -1,4 +1,4 @@
-"""HTTP and server contracts against a migrated PostgreSQL database."""
+"""Server startup, live database access, and shutdown contracts."""
 
 import json
 import os
@@ -14,17 +14,14 @@ from urllib.error import URLError
 from urllib.request import urlopen
 from uuid import uuid4
 
-from fastapi import Depends
-from fastapi.testclient import TestClient
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from src.apis.examples.python.get_widgets import GetWidgets
 from src.data.example.widgets.python.models import Owner, Widget
 from src.data.python.postgresql.config import engine_from_file
 
 
-class DatabaseTest(unittest.TestCase):
+class TestServer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.engine = engine_from_file()
@@ -51,51 +48,6 @@ class DatabaseTest(unittest.TestCase):
             created_at=datetime(2026, 10, 29, 12, 0, 0, 123456, tzinfo=UTC),
             optional_text=None,
         )
-
-    def test_database_widgets_http(self):
-        app = GetWidgets(self.engine).app
-        client = TestClient(app)
-        empty = client.get("/widgets")
-        self.assertEqual(empty.status_code, 200)
-        self.assertEqual(empty.json(), [])
-        owner = Owner(id=uuid4(), name="account")
-        widgets = [self.widget(owner), self.widget(owner)]
-        widgets[1].name = "second widget"
-        expected = [
-            {"id": str(widget.id), "name": widget.name, "owner": "account"}
-            for widget in sorted(widgets, key=lambda widget: widget.id)
-        ]
-        with Session(self.engine) as session, session.begin():
-            session.add_all(widgets)
-        self.assertEqual(client.get("/readyz").json(), {"ready": True})
-        response = client.get("/widgets")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), expected)
-        self.assertEqual(response.headers["x-content-type-options"], "nosniff")
-        self.assertEqual(client.get("/database/widgets").status_code, 404)
-        self.assertEqual(client.get("/missing").status_code, 404)
-        secure = TestClient(app, base_url="https://testserver")
-        self.assertEqual(
-            secure.get("/readyz").headers["strict-transport-security"], "max-age=31536000"
-        )
-
-    def test_request_session_rolls_back_uncommitted_work(self):
-        api = GetWidgets(self.engine)
-
-        @api.app.post("/uncommitted")
-        def uncommitted(fail: bool = False, session: Session = Depends(api.database_session)):
-            session.add(Owner(id=uuid4(), name="uncommitted"))
-            session.flush()
-            if fail:
-                raise ValueError("request failed")
-            return {"ok": True}
-
-        client = TestClient(api.app)
-        self.assertEqual(client.post("/uncommitted").json(), {"ok": True})
-        with self.assertRaisesRegex(ValueError, "request failed"):
-            client.post("/uncommitted?fail=true")
-        with Session(self.engine) as session:
-            self.assertEqual(session.scalar(select(func.count()).select_from(Owner)), 0)
 
     def test_service_process_connects_to_injected_postgres(self):
         owner = Owner(id=uuid4(), name="account")

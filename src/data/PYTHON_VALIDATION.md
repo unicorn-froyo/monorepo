@@ -48,7 +48,7 @@ Executed through Bazel with artifacts/images already available:
 
 ```sh
 bazelisk test //src/data/example/widgets:schema_test \
-  //src/apis/examples/python:database_integration_test \
+  //src/apis/examples/python:get_widgets_example_py_coverage_test \
   --runs_per_test=5 --nocache_test_results
 ```
 
