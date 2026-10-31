@@ -26,17 +26,18 @@ contexts, and transactions; Flyway owns migrations.
   TLS policy, bounded pooling, and real PostgreSQL authentication failures.
   The configuration test runs through the database coverage fixture and its
   native input target is manual, so it is counted once in wildcard test runs.
-- Real GORM tests cover exact bigint/decimal/UUID/bytea/JSONB/timestamp values,
+- Model-package integration tests in `example/widgets/go/models_test.go` cover
+  exact bigint/decimal/UUID/bytea/JSONB/timestamp values,
   nullable fields, parent/child loading, three-table commit/rollback, conditional
-  version writes, SQLSTATE constraints, application permissions, and readiness
-  and query failures.
+  version writes, SQLSTATE constraints, and application permissions. API-package
+  tests cover HTTP responses, readiness/query failures, and server lifecycle.
 - The Go app's existing `GET /widgets` returns `200` with persisted widget IDs,
   names, and owner names, including `[]` for an empty database. Missing database
   configuration returns `503`; query failures return `500`. Shared response
   headers apply. `/database/widgets` is not registered. The server entrypoint
   uses the connection file; no second app/server was introduced.
-- Endpoint, header, and process tests seed a committed owner, widget, and outbox
-  record before constructing the handler/server. The main endpoint test asserts
+- Endpoint, header, and process tests seed a committed owner and widget
+  before constructing the handler/server. The main endpoint test asserts
   the populated response's ID, Unicode name, and owner; empty-database behavior
   is checked in a separate test.
 - Startup owns the connection pool and gives the handler a widget store.

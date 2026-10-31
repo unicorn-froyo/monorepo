@@ -6,28 +6,22 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/unicorn-froyo/monorepo/src/data/go/postgresql"
 )
 
 func TestStoreQueriesAndCancellation(t *testing.T) {
-	database, err := postgresql.Open("")
+	db := testDatabase(t)
+	pool, err := db.DB()
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := database.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { pool.Close() })
-	store := NewStore(database)
+	store := NewStore(db)
 	ctx := context.Background()
 	rows, err := store.List(ctx)
 	if err != nil || len(rows) != 0 {
 		t.Fatalf("empty database: %v, %v", rows, err)
 	}
 	owner := Owner{ID: "00000000-0000-0000-0000-000000000001", Name: "account"}
-	if err := database.Create(&owner).Error; err != nil {
+	if err := db.Create(&owner).Error; err != nil {
 		t.Fatal(err)
 	}
 	// Insert in reverse order and exceed the old handler's implicit 100-row cap.
@@ -37,7 +31,7 @@ func TestStoreQueriesAndCancellation(t *testing.T) {
 			Name: "雪", Version: 1, Amount: "1.00000000", Payload: []byte{0, 255},
 			Metadata: json.RawMessage(`{}`), CreatedAt: time.Now().UTC(),
 		}
-		if err := database.Omit("Owner").Create(&widget).Error; err != nil {
+		if err := db.Omit("Owner").Create(&widget).Error; err != nil {
 			t.Fatal(err)
 		}
 	}

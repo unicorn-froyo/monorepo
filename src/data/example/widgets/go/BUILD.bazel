@@ -25,6 +25,7 @@ go_test(
     tags = ["manual"],  # The coverage target supplies the migrated database.
     deps = [
         "//src/data/go/postgresql:lib",
+        "@com_github_jackc_pgx_v5//pgconn",
         "@io_gorm_gorm//:gorm",
         "@io_gorm_gorm//schema",
     ],
