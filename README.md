@@ -16,7 +16,7 @@ Python APIs use [FastAPI](https://fastapi.tiangolo.com/) and expose an ASGI
 application. Ruby APIs use [Rails](https://rubyonrails.org/) in API-only mode and
 expose a Rack application. Go APIs use [Gin](https://gin-gonic.com/), Rust APIs
 use [Axum](https://github.com/tokio-rs/axum), and TypeScript APIs use
-[Express](https://expressjs.com/).
+[NestJS](https://nestjs.com/) with its Express adapter.
 
 APIs are distributed as OCI-compatible images composed from Bazel-built layers
 with `rules_oci`. Image targets are tagged `manual`, keeping image loading out of

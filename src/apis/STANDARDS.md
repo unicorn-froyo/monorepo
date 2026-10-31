@@ -42,8 +42,8 @@ currently reads the request URI scheme, so its server must preserve that
 scheme for HSTS to be emitted.
 
 Do not add a blanket Content-Security-Policy without accounting for built-in
-HTML endpoints such as FastAPI's interactive API documentation. Express APIs
-also disable `X-Powered-By`.
+HTML endpoints such as FastAPI's interactive API documentation. NestJS APIs using
+the Express adapter also disable `X-Powered-By`.
 
 ## Middleware integration
 
@@ -58,10 +58,19 @@ also disable `X-Powered-By`.
 - Rust: register routes with `api_base::new()` and call `.into_router()` **after**
   the last route to apply the Axum middleware to the whole router. Do not add
   unprotected routes to the returned router.
-- TypeScript: extend `AbstractApiBase`; Express middleware is installed
-  before `configureRoutes()` registers endpoints.
+- TypeScript: define NestJS modules and controllers, then call `createApi()`
+  from the shared API foundation. It installs the response-header middleware
+  before initializing Nest routes, including framework error and not-found handlers.
+  The server entrypoint awaits creation and listens on port 8080; tests close
+  each application with `app.close()`.
 
 Test the header policy in each language's shared base and an example endpoint.
 Cover a successful request, a missing route, HTTP without HSTS, and HTTPS
 with HSTS (using the stack's trusted-scheme mechanism). Run
 `bazelisk build //...` and `bazelisk test //...` before merging.
+
+NestJS uses the Express adapter. TypeScript compilation enables decorators and
+emits decorator metadata; `createApi()` loads `reflect-metadata` before bootstrap.
+The npm manifest extends Nest core 12.3.2's dependencies with
+`@standard-schema/spec`, which its published declarations import without declaring
+it directly. Keep this correction until the upstream dependency declaration is fixed.

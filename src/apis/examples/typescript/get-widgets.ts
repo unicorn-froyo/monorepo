@@ -1,15 +1,13 @@
-import { AbstractApiBase } from "../../typescript/abstract-api-base.js";
+import { Controller, Get, HttpCode, Module } from "@nestjs/common";
 
-export class GetWidgets extends AbstractApiBase {
-  public constructor() {
-    super();
-  }
-
-  protected configureRoutes(): void {
-    this.app.get("/widgets", (_request, response) => {
-      response.status(202).json([]);
-    });
+@Controller("widgets")
+export class WidgetsController {
+  @Get()
+  @HttpCode(202)
+  public getWidgets(): unknown[] {
+    return [];
   }
 }
 
-export const app = new GetWidgets().app;
+@Module({ controllers: [WidgetsController] })
+export class WidgetsModule {}
