@@ -24,6 +24,7 @@ go_format_bin(
 
 go_coverage_test(
     name = "get_widgets_example_go_coverage_test",
+    postgres = "//src/data/example/widgets:postgres",
     target = ":get_widgets_example_go_test",
 )
 
@@ -48,20 +49,35 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//src/apis/go:api_base_go_lib",
+        "//src/apis/go/server:lib",
+        "//src/data/example/widgets/go:lib",
+        "//src/data/go/postgresql:lib",
         "@com_github_gin_gonic_gin//:gin",
     ],
 )
 
 go_binary(
     name = "server",
+    srcs = ["main.go"],
     embed = [":get_widgets_example_go_lib"],
 )
 
 go_test(
     name = "get_widgets_example_go_test",
-    srcs = ["get_widgets_test.go"],
+    srcs = [
+        "get_widgets_test.go",
+        "server_test.go",
+    ],
+    data = [":server"],
     embed = [":get_widgets_example_go_lib"],
-    deps = ["@com_github_gin_gonic_gin//:gin"],
+    env = {"GO_SERVER_PATH": "$(rootpath :server)"},
+    tags = ["manual"],  # Run through the coverage target, which owns the DB fixture.
+    deps = [
+        "//src/data/example/widgets/go:lib",
+        "//src/data/go/postgresql:lib",
+        "@com_github_gin_gonic_gin//:gin",
+        "@io_gorm_gorm//:gorm",
+    ],
 )
 
 platform_target(

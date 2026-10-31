@@ -49,7 +49,7 @@ def coverage_attrs(rust = False):
         ),
     }
 
-def coverage_impl(ctx, language, llvm_cov = None, llvm_profdata = None, tool_files = None):
+def coverage_impl(ctx, language, llvm_cov = None, llvm_profdata = None, tool_files = None, command_prefix = [], extra_runfiles = None):
     """Run the instrumented dependency and preserve its runtime dependencies."""
     target = ctx.attr.target[0]
     executable = target[DefaultInfo].files_to_run.executable
@@ -66,15 +66,15 @@ def coverage_impl(ctx, language, llvm_cov = None, llvm_profdata = None, tool_fil
         args += [llvm_cov.short_path, llvm_profdata.short_path]
         files += [llvm_cov, llvm_profdata]
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
+    command = command_prefix + [ctx.executable._runner.short_path] + args
     ctx.actions.write(
         script,
-        "#!/bin/sh\nset -eu\nexec '%s' %s\n" % (
-            ctx.executable._runner.short_path,
-            " ".join(["'%s'" % arg.replace("'", "'\\''") for arg in args]),
-        ),
+        "#!/bin/sh\nset -eu\nexec %s\n" % " ".join(["'%s'" % arg.replace("'", "'\\''") for arg in command]),
         is_executable = True,
     )
     runfiles = ctx.runfiles(files = files, transitive_files = tool_files)
     runfiles = runfiles.merge(target[DefaultInfo].default_runfiles)
     runfiles = runfiles.merge(ctx.attr._runner[DefaultInfo].default_runfiles)
+    if extra_runfiles:
+        runfiles = runfiles.merge(extra_runfiles)
     return [DefaultInfo(executable = script, runfiles = runfiles)]

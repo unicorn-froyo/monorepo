@@ -28,7 +28,7 @@ go_sdk.nogo(nogo = "//tools/lint/go:go_lint_analyzer")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//third_party/golang:go.mod")
-use_repo(go_deps, "com_github_gin_gonic_gin")
+use_repo(go_deps, "com_github_gin_gonic_gin", "com_github_jackc_pgx_v5", "io_gorm_driver_postgres", "io_gorm_gorm")
 
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
 rust.toolchain(
