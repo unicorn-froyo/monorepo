@@ -5,6 +5,8 @@
     "sourceMap": true,
     "inlineSources": true,
     "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "baseUrl": "../../..",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

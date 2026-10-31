@@ -20,21 +20,25 @@ ts_format_bin(
 
 filegroup(
     name = "api_base_ts_srcs",
-    srcs = ["abstract-api-base.ts"],
+    srcs = ["api-base.ts"],
     visibility = ["//visibility:public"],
 )
 
 ts_coverage_test(
     name = "api_base_ts_coverage_test",
-    srcs = ["abstract-api-base.ts"],
+    srcs = ["api-base.ts"],
     data = [
         ":api_base_ts_lib",
         ":api_base_ts_test_lib",
         "//third_party/npm:node_modules",
-        "//third_party/npm:node_modules/express",
+        "//third_party/npm:node_modules/@nestjs/common",
+        "//third_party/npm:node_modules/@nestjs/core",
+        "//third_party/npm:node_modules/@nestjs/platform-express",
+        "//third_party/npm:node_modules/reflect-metadata",
+        "//third_party/npm:node_modules/rxjs",
         "//third_party/npm:node_modules/supertest",
     ],
-    entry_point = "src/apis/typescript/abstract-api-base.test.js",
+    entry_point = "src/apis/typescript/api-base.test.js",
 )
 
 bzl_lint_test(
@@ -50,28 +54,33 @@ bzl_lint_test(
 
 ts_project(
     name = "api_base_ts_lib",
-    srcs = ["abstract-api-base.ts"],
+    srcs = ["api-base.ts"],
     declaration = True,
     source_map = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     visibility = ["//visibility:public"],
     deps = [
+        "//third_party/npm:node_modules/@nestjs/common",
+        "//third_party/npm:node_modules/@nestjs/core",
+        "//third_party/npm:node_modules/@nestjs/platform-express",
         "//third_party/npm:node_modules/@types/express",
         "//third_party/npm:node_modules/@types/node",
-        "//third_party/npm:node_modules/express",
+        "//third_party/npm:node_modules/reflect-metadata",
+        "//third_party/npm:node_modules/rxjs",
     ],
 )
 
 ts_project(
     name = "api_base_ts_test_lib",
-    srcs = ["abstract-api-base.test.ts"],
+    srcs = ["api-base.test.ts"],
     declaration = True,
     source_map = True,
     transpiler = "tsc",
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [
         ":api_base_ts_lib",
+        "//third_party/npm:node_modules/@nestjs/common",
         "//third_party/npm:node_modules/@types/node",
         "//third_party/npm:node_modules/@types/supertest",
         "//third_party/npm:node_modules/supertest",
