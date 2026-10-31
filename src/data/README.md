@@ -40,6 +40,13 @@ py_coverage_test(
 bazelisk test //tools/testing/postgresql:integration_tests
 ```
 
+Model persistence, relationships, transactions, constraints, and role permissions
+are tested alongside the mappings in
+[`example/widgets/python/models_test.py`](example/widgets/python/models_test.py).
+The API's `get_widgets_test.py` covers widget HTTP behavior and request-session
+cleanup; `server_test.py` covers startup, live database access, and shutdown. Both suites use the migrated PostgreSQL fixture and are included
+in the integration suite above.
+
 The optional attribute starts PostgreSQL 17.10 as a foreground child process
 inside the Bazel test sandbox. Checksum-pinned Zonky binary distributions, including
 their libraries and SQL support files, are declared Bazel inputs for macOS/Linux
@@ -51,8 +58,9 @@ All database state and private credentials live under `TEST_TMPDIR`. Fixtures us
 separate migration and application roles, SCRAM authentication, random passwords,
 and loopback ephemeral ports. The application role can perform DML but cannot run
 DDL or access Flyway's history table. `POSTGRES_CONNECTION_FILE` names a private
-JSON file inherited by tests and subprocess services. Python services can use
-`engine_from_file()` from `src.data.python.postgresql.config`.
+JSON file inherited by tests and subprocess services. Python APIs using
+`AbstractApiBase` load this file automatically during application startup. Other services can use `engine_from_file()` from
+`src.data.python.postgresql.config`.
 
 `startup_timeout_seconds` defaults to 30 seconds for initialization and separately
 for SQL readiness; `migration_timeout_seconds` defaults to 60 seconds per Flyway
@@ -90,13 +98,30 @@ to that path in a second shell, then run:
 bazelisk run //src/apis/examples/python:server
 ```
 
-The existing service listens on port 8080, retains `GET /widgets` returning
-`202 []`, and exposes `/database/widgets` and `/readyz`. Its existing entrypoint
-uses the connection file when configured; there is no separate database app or
-server. Without database configuration, the database query endpoint returns 503
-and ordinary `/widgets` behavior remains available. Stop the service before
-interrupting the development DB target. The database and its data are disposable;
-persistent-volume/reset workflows are not implemented in this first slice.
+The service listens on port 8080. `GET /widgets` returns `200` with stored
+widgets ordered by ID, including each widget's ID, name, and owner name; an empty
+database returns `[]`. `/readyz` checks database connectivity when configured.
+The shared API base uses the connection file when configured. Without database
+configuration, `/widgets` returns 503.
+
+The shared `AbstractApiBase` creates a bounded SQLAlchemy engine from
+`POSTGRES_CONNECTION_FILE` during FastAPI startup, verifies connectivity, and
+disposes it on shutdown, including when the startup check fails. It registers
+`/readyz`, which returns `503 {"ready": false}` when the configured database is
+unavailable, and exposes `database_session` as a FastAPI dependency.
+The widgets API composes that dependency into an injected `WidgetStore` from
+[`example/widgets/python/store.py`](example/widgets/python/store.py). The store
+owns queries and eagerly loads owners in one query; the route maps results to HTTP
+responses and returns a sanitized `500` if a database query fails. Tests can replace
+sessions through FastAPI's `app.dependency_overrides`. Each request closes its
+session on success or failure, rolling back unfinished transactions; writes must explicitly use
+`session.begin()` or `session.commit()`. Tests may inject an engine instead;
+its caller owns disposal. The API never changes the schema. The server entrypoint
+only starts Uvicorn.
+
+Stop the service before interrupting the development DB target. The database and
+its data are disposable; persistent-volume/reset workflows are not implemented in
+this first slice.
 
 For container-based development only, `POSTGRES_CONTAINER_CONNECTION_FILE` and
 `POSTGRES_TEST_NETWORK` allow a service container to connect. After a hard kill,

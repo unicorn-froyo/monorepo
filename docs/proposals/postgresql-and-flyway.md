@@ -397,7 +397,7 @@ Planned commands after implementation:
 bazelisk build //src/data/example/widgets:schema
 bazelisk test //src/data/example/widgets:schema_test
 bazelisk run //src/data/example/widgets:dev
-bazelisk test //src/apis/examples/python:database_integration_test
+bazelisk test //src/apis/examples/python:get_widgets_example_py_coverage_test
 bazelisk test //tools/testing/postgresql:integration_tests
 ```
 

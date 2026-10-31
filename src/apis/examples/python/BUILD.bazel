@@ -30,19 +30,6 @@ py_binary(
     ],
 )
 
-py_coverage_test(
-    name = "get_widgets_example_py_coverage_test",
-    srcs = [
-        ":get_widgets_test.py",
-        "//src/apis/python:abstract_api_base_test.py",
-    ],
-    source_targets = [":get_widgets_example_py_lib"],
-    deps = [
-        ":get_widgets_example_py_lib",
-        "//third_party/pypi:fastapi",
-    ],
-)
-
 py_lint_test(
     name = "get_widgets_example_py_lint_test",
     srcs = glob(["*.py"]),
@@ -63,12 +50,12 @@ py_typecheck_test(
 )
 
 py_coverage_test(
-    name = "database_integration_test",
+    name = "get_widgets_example_py_coverage_test",
     size = "large",
     timeout = "long",
     srcs = [
-        "database_test.py",
         "get_widgets_test.py",
+        "server_test.py",
         "//src/apis/python:abstract_api_base_test.py",
         "//src/data/python/postgresql:config_test.py",
     ],
@@ -89,7 +76,6 @@ py_binary(
     srcs = ["server.py"],
     deps = [
         ":get_widgets_example_py_lib",
-        "//src/data/python/postgresql:lib",
         "//third_party/pypi:uvicorn",
     ],
 )

@@ -1,30 +1,20 @@
-"""SQLAlchemy and HTTP contracts on a real Flyway-migrated PostgreSQL database."""
+"""Model contracts on a real Flyway-migrated PostgreSQL database."""
 
-import json
-import os
-import re
-import subprocess
-import time
 import unittest
 from datetime import UTC, datetime
 from decimal import Decimal
-from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
 from psycopg import Error as PsycopgError
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from src.apis.examples.python.get_widgets import GetWidgets
 from src.data.example.widgets.python.models import Outbox, Owner, Widget
 from src.data.python.postgresql.config import engine_from_file
 
 
-class DatabaseTest(unittest.TestCase):
+class ModelsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.engine = engine_from_file()
@@ -52,7 +42,7 @@ class DatabaseTest(unittest.TestCase):
             optional_text=None,
         )
 
-    def test_exact_types_relationships_transactions_and_http(self):
+    def test_exact_types_relationships_and_transactions(self):
         tables = inspect(self.engine).get_table_names(schema="widgets")
         owner = Owner(id=uuid4(), name="account")
         widget = self.widget(owner)
@@ -78,21 +68,6 @@ class DatabaseTest(unittest.TestCase):
             )
             self.assertIsNone(stored.optional_text)
             self.assertEqual(stored.owner.widgets, [stored])
-        app = GetWidgets(self.engine).app
-        client = TestClient(app)
-        self.assertEqual(client.get("/readyz").json(), {"ready": True})
-        response = client.get("/database/widgets")
-        self.assertEqual(
-            response.json(), [{"id": str(identifier), "name": "雪☃", "owner": "account"}]
-        )
-        self.assertEqual(response.headers["x-content-type-options"], "nosniff")
-        self.assertEqual(client.get("/widgets").status_code, 202)
-        self.assertEqual(client.get("/widgets").json(), [])
-        self.assertEqual(client.get("/missing").status_code, 404)
-        secure = TestClient(app, base_url="https://testserver")
-        self.assertEqual(
-            secure.get("/readyz").headers["strict-transport-security"], "max-age=31536000"
-        )
         self.assertEqual(inspect(self.engine).get_table_names(schema="widgets"), tables)
 
         with self.assertRaisesRegex(RuntimeError, "rollback"):
@@ -140,35 +115,6 @@ class DatabaseTest(unittest.TestCase):
                 )
         assert isinstance(null_value.exception.orig, PsycopgError)
         self.assertEqual(null_value.exception.orig.sqlstate, "23502")
-
-    def test_service_process_connects_to_injected_postgres(self):
-        server = Path("src/apis/examples/python/server").resolve()
-        log = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"]) / "service.log"
-        with log.open("w") as output:
-            process = subprocess.Popen(
-                [str(server), "--port=0"], stdout=output, stderr=subprocess.STDOUT
-            )
-            try:
-                deadline = time.monotonic() + 20
-                while time.monotonic() < deadline:
-                    match = re.search(r"http://0\.0\.0\.0:(\d+)", log.read_text())
-                    if match:
-                        try:
-                            with urlopen(
-                                f"http://127.0.0.1:{match[1]}/readyz", timeout=1
-                            ) as response:
-                                self.assertEqual(json.load(response), {"ready": True})
-                            break
-                        except URLError:
-                            pass
-                    if process.poll() is not None:
-                        self.fail(log.read_text())
-                    time.sleep(0.05)
-                else:
-                    self.fail("Service did not become ready: " + log.read_text())
-            finally:
-                process.terminate()
-                process.wait(timeout=10)
 
 
 if __name__ == "__main__":
