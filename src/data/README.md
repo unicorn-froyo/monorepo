@@ -1,6 +1,7 @@
 # PostgreSQL development and testing
 
-Python uses SQLAlchemy ORM with Psycopg 3. Flyway owns database migrations;
+Python uses SQLAlchemy ORM with Psycopg 3; Go uses GORM with its pgx-backed
+PostgreSQL driver. Flyway owns database migrations;
 application startup never creates tables. The example schema lives in
 [`example/widgets/migrations`](example/widgets/migrations), with mappings in
 [`example/widgets/python/models.py`](example/widgets/python/models.py).
@@ -108,16 +109,64 @@ bazelisk run //tools/testing/python:postgresql_runner -- \
 
 Recovery removes only containers/networks with that exact fixture label.
 
+## Go integration
+
+Go uses the same migrated PostgreSQL fixture and private connection file:
+
+```starlark
+go_coverage_test(
+    name = "get_widgets_example_go_coverage_test",
+    target = ":get_widgets_example_go_test",
+    postgres = "//src/data/example/widgets:postgres",
+    size = "large",
+    timeout = "long",
+)
+```
+
+The native `go_test` remains the coverage runner's instrumented input. Mark a
+DB-dependent native test `manual` so wildcard tests execute it through the
+coverage target that owns PostgreSQL setup. Standalone Go unit coverage
+tests omit `postgres`. Both paths run without Docker and preserve portable
+`lcov.info` and the existing 100% aggregate line threshold.
+
+```sh
+bazelisk test //src/apis/examples/go:get_widgets_example_go_coverage_test
+bazelisk test //src/data/go/postgresql:coverage_test
+bazelisk test //src/data/example/widgets/go:coverage_test
+```
+
+`src/data/go/postgresql.Open("")` reads `POSTGRES_CONNECTION_FILE` and returns a
+native `*gorm.DB` with a five-connection pool. It disables automatic ping and SQL
+logging, does not migrate tables, and uses explicit query contexts through
+`WithContext`. Callers close the underlying `database/sql` pool when finished.
+The existing Go server owns the pool and supplies a widget store when configured.
+HTTP handlers depend on the store's `List` and `Ready` operations; GORM queries
+live in `example/widgets/go/store.go`. As in Python, `/database/widgets` returns
+widgets ordered by ID with owner names, and `/readyz` checks connectivity.
+The ordinary `/widgets` behavior remains available without database configuration.
+
+Go mappings live under `example/widgets/go`. Decimal amounts use exact decimal
+strings, versions use `int64`, JSONB uses `json.RawMessage`, nullable text uses a
+pointer, and timestamps use `time.Time`. Native GORM transactions cover the owner,
+widget, and outbox together. Do not call `AutoMigrate`; SQL migrations remain
+the shared source of schema structure.
+
+The Go database suite checks GORM relationships and exact values, rollback and
+commit, stale-version conditional writes, SQLSTATE constraints, permissions, HTTP
+behavior, and readiness failures. It also starts the existing Python server on
+the same fixture and verifies that it reads rows written through GORM.
+
 ## Scope and remaining adoption work
 
-This implementation supplies shared migration packaging, static checks, Python
-coverage fixtures, disposable development databases, recovery, connection
-configuration, and a real ORM/HTTP example. Repository-wide `bazelisk test //...`
-includes sandboxed database integration tests without requiring Docker. The
-integration suite above can also be run directly.
+This implementation supplies shared migration packaging, static checks,
+coverage fixtures for Python and Go, disposable development databases, recovery,
+connection configuration, and ORM integration in the existing service examples.
+Repository-wide `bazelisk test //...` includes sandboxed database integration
+tests without requiring Docker. The integration suite above can also be run
+directly.
 
 The [proposal](../../docs/proposals/postgresql-and-flyway.md) still governs later
-work: other language integrations, production migration-job packaging and hosting,
+work: remaining language integrations, production migration-job packaging and hosting,
 persistent development storage, containerized-service helpers, registered runtime
 toolchains, the complete stress/rollout/backfill benchmark suite, and staging
 recovery exercises. Flyway source validation is not deployment drift detection.

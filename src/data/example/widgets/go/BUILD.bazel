@@ -1,0 +1,57 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools/coverage/go:index.bzl", "go_coverage_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/go:index.bzl", "go_format_bin", "go_format_test", "go_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "lib",
+    srcs = [
+        "models.go",
+        "store.go",
+    ],
+    importpath = "github.com/unicorn-froyo/monorepo/src/data/example/widgets/go",
+    deps = ["@io_gorm_gorm//:gorm"],
+)
+
+go_test(
+    name = "models_test",
+    srcs = [
+        "models_test.go",
+        "store_test.go",
+    ],
+    embed = [":lib"],
+    tags = ["manual"],  # The coverage target supplies the migrated database.
+    deps = [
+        "//src/data/go/postgresql:lib",
+        "@io_gorm_gorm//:gorm",
+        "@io_gorm_gorm//schema",
+    ],
+)
+
+go_coverage_test(
+    name = "coverage_test",
+    postgres = "//src/data/example/widgets:postgres",
+    target = ":models_test",
+)
+
+go_lint_test(
+    name = "go_lint_test",
+    targets = [":lib"],
+)
+
+go_format_test(
+    name = "go_format_test",
+    srcs = glob(["*.go"]),
+)
+
+go_format_bin(
+    name = "go_format_bin",
+    srcs = glob(["*.go"]),
+)
+
+bzl_lint_test(
+    name = "bzl_lint_test",
+    data = ["BUILD.bazel"],
+)

@@ -87,6 +87,7 @@ py_coverage_test(
 py_binary(
     name = "server",
     srcs = ["server.py"],
+    visibility = ["//src/apis/examples/go:__pkg__"],
     deps = [
         ":get_widgets_example_py_lib",
         "//src/data/python/postgresql:lib",

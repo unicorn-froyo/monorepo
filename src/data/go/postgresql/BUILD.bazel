@@ -1,0 +1,49 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools/coverage/go:index.bzl", "go_coverage_test")
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load("//tools/lint/go:index.bzl", "go_format_bin", "go_format_test", "go_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "lib",
+    srcs = ["config.go"],
+    importpath = "github.com/unicorn-froyo/monorepo/src/data/go/postgresql",
+    deps = [
+        "@io_gorm_driver_postgres//:postgres",
+        "@io_gorm_gorm//:gorm",
+        "@io_gorm_gorm//logger",
+    ],
+)
+
+go_test(
+    name = "config_test",
+    srcs = ["config_test.go"],
+    embed = [":lib"],
+    deps = ["@io_gorm_gorm//:gorm"],
+)
+
+go_coverage_test(
+    name = "coverage_test",
+    target = ":config_test",
+)
+
+go_lint_test(
+    name = "go_lint_test",
+    targets = [":lib"],
+)
+
+go_format_test(
+    name = "go_format_test",
+    srcs = glob(["*.go"]),
+)
+
+go_format_bin(
+    name = "go_format_bin",
+    srcs = glob(["*.go"]),
+)
+
+bzl_lint_test(
+    name = "bzl_lint_test",
+    data = ["BUILD.bazel"],
+)

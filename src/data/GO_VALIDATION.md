@@ -1,0 +1,46 @@
+# Go PostgreSQL validation
+
+The Go integration was rebuilt on main commit `3632660` (merged Python PR #54)
+and validated on 2026-10-30 on macOS arm64. It reuses main's native sandboxed
+PostgreSQL 17.10/Flyway fixture without changing the PostgreSQL lifecycle;
+database tests do not require Docker.
+
+Dependencies are pinned under `third_party/golang`: GORM 1.31.2, its PostgreSQL
+driver 1.6.0, and pgx v5.6.0. Runtime code uses native GORM models, queries,
+contexts, and transactions; Flyway owns migrations.
+
+## Checks
+
+- `bazelisk build //...` passed.
+- `bazelisk test //...` passed: all 151 test targets, including Go and Python
+  PostgreSQL integration tests. Unchanged results were cached.
+- Go configuration, model, and service coverage targets each enforce the
+  repository's existing 100% aggregate line threshold and emit portable
+  `lcov.info` plus raw `coverage.out`.
+- Configuration coverage is 36/36 lines, models/store 14/14, and HTTP/server
+  52/52. LCOV source records contain workspace-relative application paths.
+- Model tests validate table/column bindings and relationship metadata against
+  the shared schema contract. Connection tests validate configuration failures,
+  TLS policy, bounded pooling, and GORM initialization failures.
+- Real GORM tests cover exact bigint/decimal/UUID/bytea/JSONB/timestamp values,
+  nullable fields, parent/child loading, three-table commit/rollback, conditional
+  version writes, SQLSTATE constraints, application permissions, and readiness
+  and query failures.
+- The existing Go app retains `GET /widgets` returning `202 []` and shared
+  response headers. Its existing server entrypoint uses optional database
+  configuration; no second app/server was introduced.
+- Startup owns the connection pool and gives the handler a widget store.
+  GORM queries live in the data package. Store tests check owner loading, stable
+  ordering, more than 100 rows, request cancellation, and closed-pool errors.
+  Listing has no implicit 100-row cap, matching the Python endpoint.
+- A Go test starts the existing Python server on the same database and verifies
+  that Python's SQLAlchemy mappings read records written through GORM.
+
+The integration entrypoint is
+`bazelisk test //src/apis/examples/go:get_widgets_example_go_coverage_test`.
+The fixture runs inside Bazel's sandbox as described in the [usage guide](README.md).
+
+Production deployment, native Linux qualification, full bidirectional/all-language
+interoperability, and the proposal's complete contention/backfill/performance
+benchmarks remain follow-up work. These checks establish the Go implementation
+and its reuse of the shared fixture, not production adoption readiness.

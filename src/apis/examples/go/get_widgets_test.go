@@ -10,6 +10,7 @@ import (
 )
 
 func TestMainEntrypoint(t *testing.T) {
+	t.Setenv("POSTGRES_CONNECTION_FILE", "")
 	originalListen, originalFatal := listenAndServe, logFatal
 	t.Cleanup(func() {
 		listenAndServe, logFatal = originalListen, originalFatal
@@ -41,7 +42,7 @@ func TestHeaders(t *testing.T) {
 			t.Run(scheme+path, func(t *testing.T) {
 				request := httptest.NewRequest(http.MethodGet, scheme+"://example.com"+path, nil)
 				response := httptest.NewRecorder()
-				newHandler().ServeHTTP(response, request)
+				newHandler(nil).ServeHTTP(response, request)
 				for header, want := range map[string]string{
 					"X-Content-Type-Options": "nosniff",
 					"X-Frame-Options":        "DENY",
@@ -65,7 +66,7 @@ func TestHeaders(t *testing.T) {
 }
 
 func TestServerConfiguration(t *testing.T) {
-	server := newServer()
+	server := newServer(nil)
 	if server.Addr != ":8080" {
 		t.Fatalf("server address = %q, want :8080", server.Addr)
 	}
@@ -80,7 +81,7 @@ func TestGetWidgets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	request := httptest.NewRequest(http.MethodGet, "/widgets", nil)
 	response := httptest.NewRecorder()
-	newHandler().ServeHTTP(response, request)
+	newHandler(nil).ServeHTTP(response, request)
 
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusAccepted)
