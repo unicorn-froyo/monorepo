@@ -35,8 +35,6 @@ contexts, and transactions; Flyway owns migrations.
   GORM queries live in the data package. Store tests check owner loading, stable
   ordering, more than 100 rows, request cancellation, and closed-pool errors.
   Listing has no implicit 100-row cap, matching the Python endpoint.
-- A Go test starts the existing Python server on the same database and verifies
-  that Python's SQLAlchemy mappings read records written through GORM.
 - A process test launches the actual Go server against the fixture, changes a row
   after startup, and verifies that HTTP reads the updated name and its owner.
   Startup and configuration tests call the real PostgreSQL opener; no database

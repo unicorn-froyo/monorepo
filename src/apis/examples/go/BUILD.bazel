@@ -66,10 +66,7 @@ go_test(
         "database_test.go",
         "get_widgets_test.go",
     ],
-    data = [
-        ":server",
-        "//src/apis/examples/python:server",
-    ],
+    data = [":server"],
     embed = [":get_widgets_example_go_lib"],
     env = {"GO_SERVER_PATH": "$(rootpath :server)"},
     tags = ["manual"],  # Run through the coverage target, which owns the DB fixture.

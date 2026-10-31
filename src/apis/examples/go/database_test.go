@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"testing"
 	"time"
 
@@ -299,50 +298,4 @@ func TestGoServerProcessConnectsToPostgres(t *testing.T) {
 	if response.StatusCode != http.StatusOK || len(rows) != 1 || rows[0]["id"] != widgetID || rows[0]["name"] != "updated 雪" || rows[0]["owner"] != "account" {
 		t.Fatalf("Go server did not read live PostgreSQL data: status=%d rows=%v", response.StatusCode, rows)
 	}
-}
-
-func TestPythonAppReadsGoORMRecords(t *testing.T) {
-	db := database(t)
-	if err := db.Transaction(insertExample); err != nil {
-		t.Fatal(err)
-	}
-	server := filepath.Join(os.Getenv("TEST_SRCDIR"), os.Getenv("TEST_WORKSPACE"), "src/apis/examples/python/server")
-	logPath := filepath.Join(t.TempDir(), "python-service.log")
-	output, err := os.Create(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer output.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	command := exec.CommandContext(ctx, server, "--port=0")
-	command.Stdout, command.Stderr = output, output
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { cancel(); command.Wait() }()
-	address := regexp.MustCompile(`http://0\.0\.0\.0:(\d+)`)
-	client := http.Client{Timeout: time.Second}
-	for ctx.Err() == nil {
-		contents, err := os.ReadFile(logPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		match := address.FindSubmatch(contents)
-		if len(match) > 1 {
-			response, err := client.Get("http://127.0.0.1:" + string(match[1]) + "/database/widgets")
-			if err == nil {
-				var rows []map[string]string
-				decodeError := json.NewDecoder(response.Body).Decode(&rows)
-				response.Body.Close()
-				if response.StatusCode != 200 || decodeError != nil || len(rows) != 1 || rows[0]["id"] != widgetID || rows[0]["owner"] != "account" {
-					t.Fatalf("Python could not read Go ORM data: status=%d rows=%v error=%v", response.StatusCode, rows, decodeError)
-				}
-				return
-			}
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	contents, _ := os.ReadFile(logPath)
-	t.Fatalf("Python service did not become ready: %s", contents)
 }

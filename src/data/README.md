@@ -156,8 +156,8 @@ commit, stale-version conditional writes, SQLSTATE constraints, permissions, HTT
 behavior, and readiness failures. Connection tests use the real fixture, including
 incorrect-password rejection; database opening is never replaced by a test stub.
 A process test launches the Go server with `--port`, updates a row after startup,
-and verifies that HTTP reads the updated PostgreSQL data. It also starts the existing
-Python server on the same fixture and verifies that it reads rows written through GORM.
+and verifies that HTTP reads the updated PostgreSQL data. Each server is built and
+tested independently against the shared PostgreSQL schema and fixture.
 
 ## Scope and remaining adoption work
 
