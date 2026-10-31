@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,15 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	widgets "github.com/unicorn-froyo/monorepo/src/data/example/widgets/go"
 )
-
-func TestRunWithoutDatabase(t *testing.T) {
-	t.Setenv("POSTGRES_CONNECTION_FILE", "")
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := run(ctx, "127.0.0.1:0"); err != nil {
-		t.Fatal(err)
-	}
-}
 
 func TestHeaders(t *testing.T) {
 	handler := newHandler(widgets.NewStore(databaseWithWidgets(t)))
@@ -88,5 +78,54 @@ func TestGetWidgetsWithEmptyDatabase(t *testing.T) {
 	newHandler(widgets.NewStore(database(t))).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/widgets", nil))
 	if response.Code != http.StatusOK || response.Body.String() != "[]" {
 		t.Fatalf("empty database: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestWidgetResponsesAndReadiness(t *testing.T) {
+	db := databaseWithWidgets(t)
+	handler := newHandler(widgets.NewStore(db))
+	request := func(path string) *httptest.ResponseRecorder {
+		t.Helper()
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "https://example.com"+path, nil))
+		return response
+	}
+	response := request("/widgets")
+	var result []map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != 200 || len(result) != 1 || result[0]["id"] != widgetID || result[0]["owner"] != "account" || result[0]["name"] != "雪☃" {
+		t.Fatalf("query response: %+v", result)
+	}
+	if response.Header().Get("Strict-Transport-Security") != "max-age=31536000" {
+		t.Fatal("shared middleware missing")
+	}
+	if got := request("/readyz"); got.Code != 200 {
+		t.Fatal("database not ready")
+	}
+	if got := request("/database/widgets"); got.Code != http.StatusNotFound {
+		t.Fatal("removed database-specific route is still registered")
+	}
+	pool, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := request("/widgets"); got.Code != 500 {
+		t.Fatal("query failure hidden")
+	}
+	if got := request("/readyz"); got.Code != 503 {
+		t.Fatal("readiness failure hidden")
+	}
+	empty := newHandler(nil)
+	for path, want := range map[string]int{"/readyz": 200, "/widgets": 503} {
+		recorder := httptest.NewRecorder()
+		empty.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != want {
+			t.Fatalf("%s: %d", path, recorder.Code)
+		}
 	}
 }

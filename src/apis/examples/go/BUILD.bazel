@@ -65,8 +65,9 @@ go_binary(
 go_test(
     name = "get_widgets_example_go_test",
     srcs = [
-        "database_test.go",
+        "fixtures_test.go",
         "get_widgets_test.go",
+        "server_test.go",
     ],
     data = [":server"],
     embed = [":get_widgets_example_go_lib"],
