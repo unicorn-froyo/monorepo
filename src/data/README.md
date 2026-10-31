@@ -50,8 +50,9 @@ All database state and private credentials live under `TEST_TMPDIR`. Fixtures us
 separate migration and application roles, SCRAM authentication, random passwords,
 and loopback ephemeral ports. The application role can perform DML but cannot run
 DDL or access Flyway's history table. `POSTGRES_CONNECTION_FILE` names a private
-JSON file inherited by tests and subprocess services. Python services can use
-`engine_from_file()` from `src.data.python.postgresql.config`.
+JSON file inherited by tests and subprocess services. Python APIs using
+`AbstractApiBase` load this file automatically during application startup. Other services can use `engine_from_file()` from
+`src.data.python.postgresql.config`.
 
 `startup_timeout_seconds` defaults to 30 seconds for initialization and separately
 for SQL readiness; `migration_timeout_seconds` defaults to 60 seconds per Flyway
@@ -90,12 +91,24 @@ bazelisk run //src/apis/examples/python:server
 ```
 
 The existing service listens on port 8080, retains `GET /widgets` returning
-`202 []`, and exposes `/database/widgets` and `/readyz`. Its existing entrypoint
+`202 []`, and exposes `/database/widgets` and `/readyz`. The shared API base
 uses the connection file when configured; there is no separate database app or
 server. Without database configuration, the database query endpoint returns 503
-and ordinary `/widgets` behavior remains available. Stop the service before
-interrupting the development DB target. The database and its data are disposable;
-persistent-volume/reset workflows are not implemented in this first slice.
+and ordinary `/widgets` behavior remains available.
+
+The shared `AbstractApiBase` creates a bounded SQLAlchemy engine from
+`POSTGRES_CONNECTION_FILE` during FastAPI startup and disposes it on shutdown.
+It registers `/readyz` and exposes `database_session` as a FastAPI dependency.
+Routes declare `session: Session = Depends(self.database_session)` and keep
+application queries in the route. Each request closes its session on success or
+failure, rolling back unfinished transactions; writes must explicitly use
+`session.begin()` or `session.commit()`. Tests may inject an engine instead;
+its caller owns disposal. The API never changes the schema. The server entrypoint
+only starts Uvicorn.
+
+Stop the service before interrupting the development DB target. The database and
+its data are disposable; persistent-volume/reset workflows are not implemented in
+this first slice.
 
 For container-based development only, `POSTGRES_CONTAINER_CONNECTION_FILE` and
 `POSTGRES_TEST_NETWORK` allow a service container to connect. After a hard kill,

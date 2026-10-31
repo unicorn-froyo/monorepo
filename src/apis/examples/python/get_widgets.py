@@ -2,7 +2,7 @@
 
 from http import HTTPStatus
 
-from fastapi import HTTPException, Response
+from fastapi import Depends, Response
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
@@ -14,8 +14,7 @@ class GetWidgets(AbstractApiBase):  # pylint: disable=too-few-public-methods
     """Widgets HTTP API."""
 
     def __init__(self, engine: Engine | None = None) -> None:
-        self.engine = engine
-        super().__init__(title="Widgets API")
+        super().__init__(title="Widgets API", engine=engine)
 
     def configure_routes(self) -> None:
         """Register widget endpoints."""
@@ -26,21 +25,11 @@ class GetWidgets(AbstractApiBase):  # pylint: disable=too-few-public-methods
             return []
 
         @self.app.get("/database/widgets")
-        def widgets() -> list[dict[str, str]]:
-            if self.engine is None:
-                raise HTTPException(status_code=503, detail="Database is not configured")
-            with Session(self.engine) as session:
-                return [
-                    {"id": str(widget.id), "name": widget.name, "owner": widget.owner.name}
-                    for widget in session.scalars(select(Widget).order_by(Widget.id))
-                ]
-
-        @self.app.get("/readyz")
-        def ready() -> dict[str, bool]:
-            if self.engine is not None:
-                with self.engine.connect() as connection:
-                    connection.execute(select(1))
-            return {"ready": True}
+        def widgets(session: Session = Depends(self.database_session)) -> list[dict[str, str]]:
+            return [
+                {"id": str(widget.id), "name": widget.name, "owner": widget.owner.name}
+                for widget in session.scalars(select(Widget).order_by(Widget.id))
+            ]
 
 
 app = GetWidgets().app

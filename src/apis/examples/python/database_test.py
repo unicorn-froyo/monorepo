@@ -13,6 +13,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 from uuid import uuid4
 
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from psycopg import Error as PsycopgError
 from sqlalchemy import func, inspect, select, text
@@ -106,6 +107,24 @@ class DatabaseTest(unittest.TestCase):
         with Session(self.engine) as session:
             for model in (Owner, Widget, Outbox):
                 self.assertEqual(session.scalar(select(func.count()).select_from(model)), 1)
+
+    def test_request_session_rolls_back_uncommitted_work(self):
+        api = GetWidgets(self.engine)
+
+        @api.app.post("/uncommitted")
+        def uncommitted(fail: bool = False, session: Session = Depends(api.database_session)):
+            session.add(Owner(id=uuid4(), name="uncommitted"))
+            session.flush()
+            if fail:
+                raise ValueError("request failed")
+            return {"ok": True}
+
+        client = TestClient(api.app)
+        self.assertEqual(client.post("/uncommitted").json(), {"ok": True})
+        with self.assertRaisesRegex(ValueError, "request failed"):
+            client.post("/uncommitted?fail=true")
+        with Session(self.engine) as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(Owner)), 0)
 
     def test_constraint_errors_and_application_role(self):
         with self.assertRaises(IntegrityError):

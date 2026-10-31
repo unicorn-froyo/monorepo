@@ -1,10 +1,14 @@
 """Tests for the FastAPI API base class."""
 
+import os
 from asyncio import run
 from unittest import TestCase, main
+from unittest.mock import MagicMock, patch
 
-from fastapi import Response
+from fastapi import Depends, Response
 from fastapi.testclient import TestClient
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session
 from starlette.types import Message, Receive, Scope, Send
 
 from src.apis.python.abstract_api_base import AbstractApiBase
@@ -17,13 +21,98 @@ class TestApiBase(TestCase):
     class Api(AbstractApiBase):  # pylint: disable=too-few-public-methods
         """Small API used by the tests."""
 
-        def __init__(self) -> None:
-            super().__init__(title="Test API")
+        def __init__(self, engine: Engine | None = None) -> None:
+            super().__init__(title="Test API", engine=engine)
 
         def configure_routes(self) -> None:
             @self.app.get("/message")
             async def message() -> dict[str, str]:
                 return {"message": "Hello world!"}
+
+    def test_lifespan_without_database_configuration(self):
+        """No database is opened when the process has no connection file."""
+        with patch.dict(os.environ, {}, clear=True):
+            with TestClient(self.Api().app) as client:
+                self.assertEqual(client.get("/readyz").json(), {"ready": True})
+
+    def test_lifespan_owns_configured_engine(self):
+        """Startup is lazy and every shutdown releases the engine it created."""
+        with patch.dict(os.environ, {"POSTGRES_CONNECTION_FILE": "/private/connection.json"}):
+            with patch("src.apis.python.abstract_api_base.engine_from_file") as factory:
+                for fail in (False, True):
+                    with self.subTest(fail=fail):
+                        factory.reset_mock()
+                        api = self.Api()
+                        factory.assert_not_called()
+                        try:
+                            with TestClient(api.app) as client:
+                                factory.assert_called_once_with()
+                                self.assertIs(api.engine, factory.return_value)
+                                self.assertEqual(client.get("/readyz").status_code, 200)
+                                if fail:
+                                    raise ValueError("shutdown")
+                        except ValueError:
+                            self.assertTrue(fail)
+                        factory.return_value.dispose.assert_called_once_with()
+                        self.assertIsNone(api.engine)
+
+    def test_lifespan_borrows_injected_engine(self):
+        """Explicit injection takes precedence over process configuration."""
+        engine = MagicMock()
+        with patch.dict(os.environ, {"POSTGRES_CONNECTION_FILE": "/unused"}):
+            with patch("src.apis.python.abstract_api_base.engine_from_file") as factory:
+                api = self.Api(engine)
+                with TestClient(api.app) as client:
+                    self.assertEqual(client.get("/readyz").status_code, 200)
+                factory.assert_not_called()
+        engine.dispose.assert_not_called()
+        self.assertIs(api.engine, engine)
+
+    def test_database_is_optional(self):
+        """Ordinary APIs stay ready; database routes require configuration."""
+        api = self.Api()
+
+        @api.app.get("/database")
+        def database(session: Session = Depends(api.database_session)):
+            return {"active": session.is_active}
+
+        client = TestClient(api.app)
+        self.assertEqual(client.get("/readyz").json(), {"ready": True})
+        response = client.get("/database")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"detail": "Database is not configured"})
+
+    def test_request_sessions_close_on_success_and_failure(self):
+        """Each request gets a session and failures reach its cleanup context."""
+        engine = MagicMock()
+        api = self.Api(engine)
+
+        @api.app.get("/database")
+        def database(fail: bool = False, session: Session = Depends(api.database_session)):
+            session.scalar(select(1))
+            if fail:
+                raise ValueError("route failed")
+            return {"ok": True}
+
+        with patch("src.apis.python.abstract_api_base.Session") as factory:
+            client = TestClient(api.app)
+            self.assertEqual(client.get("/database").json(), {"ok": True})
+            factory.return_value.__exit__.assert_called_once_with(None, None, None)
+            with self.assertRaisesRegex(ValueError, "route failed"):
+                client.get("/database?fail=true")
+            self.assertEqual(factory.call_count, 2)
+            factory.assert_called_with(engine)
+            self.assertEqual(factory.return_value.__exit__.call_args.args[0], ValueError)
+        engine.dispose.assert_not_called()
+
+    def test_readiness_checks_database_and_propagates_failure(self):
+        """A configured but unavailable database must not report ready."""
+        engine = MagicMock()
+        client = TestClient(self.Api(engine).app, raise_server_exceptions=False)
+        self.assertEqual(client.get("/readyz").json(), {"ready": True})
+        engine.connect.return_value.__enter__.return_value.execute.assert_called_once()
+        engine.connect.side_effect = RuntimeError("unavailable")
+        self.assertEqual(client.get("/readyz").status_code, 500)
 
     def test_is_abstract(self):
         """The base cannot be instantiated without route configuration."""

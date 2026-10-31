@@ -43,7 +43,7 @@ class TestGetWidgets(TestCase):
 
     def test_injected_engine_is_used_by_the_same_application(self):
         engine = MagicMock()
-        with patch("src.apis.examples.python.get_widgets.Session") as session:
+        with patch("src.apis.python.abstract_api_base.Session") as session:
             session.return_value.__enter__.return_value.scalars.return_value = [
                 SimpleNamespace(id="widget", name="display", owner=SimpleNamespace(name="owner"))
             ]

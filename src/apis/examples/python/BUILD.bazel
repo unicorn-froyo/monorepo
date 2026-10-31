@@ -35,6 +35,7 @@ py_coverage_test(
     srcs = [
         ":get_widgets_test.py",
         "//src/apis/python:abstract_api_base_test.py",
+        "//src/data/python/postgresql:config_test.py",
     ],
     source_targets = [":get_widgets_example_py_lib"],
     deps = [
@@ -89,7 +90,6 @@ py_binary(
     srcs = ["server.py"],
     deps = [
         ":get_widgets_example_py_lib",
-        "//src/data/python/postgresql:lib",
         "//third_party/pypi:uvicorn",
     ],
 )

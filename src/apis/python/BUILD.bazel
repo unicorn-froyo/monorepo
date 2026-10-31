@@ -22,12 +22,19 @@ py_library(
         ":abstract_api_base.py",
         ":security_headers.py",
     ],
-    deps = ["//third_party/pypi:fastapi"],
+    deps = [
+        "//src/data/python/postgresql:lib",
+        "//third_party/pypi:fastapi",
+        "//third_party/pypi:postgresql",
+    ],
 )
 
 py_coverage_test(
     name = "api_base_py_coverage_test",
-    srcs = [":abstract_api_base_test.py"],
+    srcs = [
+        ":abstract_api_base_test.py",
+        "//src/data/python/postgresql:config_test.py",
+    ],
     source_targets = [":api_base_py_lib"],
     deps = [
         ":api_base_py_lib",
