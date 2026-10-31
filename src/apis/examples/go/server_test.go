@@ -14,6 +14,8 @@ import (
 	"time"
 
 	widgets "github.com/unicorn-froyo/monorepo/src/data/example/widgets/go"
+	"github.com/unicorn-froyo/monorepo/src/data/go/postgresql"
+	"gorm.io/gorm"
 )
 
 func TestRunWithoutDatabase(t *testing.T) {
@@ -26,7 +28,15 @@ func TestRunWithoutDatabase(t *testing.T) {
 }
 
 func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
-	db := database(t)
+	db, err := postgresql.Open("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pool.Close() })
 	applicationName := "cleanup-" + t.Name()
 	t.Setenv("PGAPPNAME", applicationName)
 	count := func() int64 {
@@ -73,7 +83,35 @@ func TestRunClosesDatabaseOnServerFailure(t *testing.T) {
 }
 
 func TestGoServerProcessConnectsToPostgres(t *testing.T) {
-	db := databaseWithWidgets(t)
+	db, err := postgresql.Open("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	const ownerID = "00000000-0000-0000-0000-000000000001"
+	const widgetID = "00000000-0000-0000-0000-000000000002"
+	for _, table := range []string{"widgets.outbox", "widgets.widgets", "widgets.owners"} {
+		if err := db.Exec("DELETE FROM " + table).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&widgets.Owner{ID: ownerID, Name: "account"}).Error; err != nil {
+			return err
+		}
+		widget := widgets.Widget{
+			ID: widgetID, OwnerID: ownerID, Name: "雪☃", Version: 1,
+			Amount: "12.34000000", Payload: []byte{1}, Metadata: json.RawMessage(`{}`),
+			CreatedAt: time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC),
+		}
+		return tx.Omit("Owner").Create(&widget).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

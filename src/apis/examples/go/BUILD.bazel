@@ -65,7 +65,6 @@ go_binary(
 go_test(
     name = "get_widgets_example_go_test",
     srcs = [
-        "fixtures_test.go",
         "get_widgets_test.go",
         "server_test.go",
     ],
