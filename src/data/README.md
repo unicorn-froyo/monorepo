@@ -136,8 +136,8 @@ bazelisk test //src/data/example/widgets/go:coverage_test
 ```
 
 `src/data/go/postgresql.Open("")` reads `POSTGRES_CONNECTION_FILE` and returns a
-native `*gorm.DB` with a five-connection pool. It disables automatic ping and SQL
-logging, does not migrate tables, and uses explicit query contexts through
+native `*gorm.DB` with a five-connection pool. It authenticates against PostgreSQL
+before returning, disables SQL logging, does not migrate tables, and uses query contexts through
 `WithContext`. Callers close the underlying `database/sql` pool when finished.
 The existing Go server owns the pool and supplies a widget store when configured.
 HTTP handlers depend on the store's `List` and `Ready` operations; GORM queries
@@ -153,8 +153,11 @@ the shared source of schema structure.
 
 The Go database suite checks GORM relationships and exact values, rollback and
 commit, stale-version conditional writes, SQLSTATE constraints, permissions, HTTP
-behavior, and readiness failures. It also starts the existing Python server on
-the same fixture and verifies that it reads rows written through GORM.
+behavior, and readiness failures. Connection tests use the real fixture, including
+incorrect-password rejection; database opening is never replaced by a test stub.
+A process test launches the Go server with `--port`, updates a row after startup,
+and verifies that HTTP reads the updated PostgreSQL data. It also starts the existing
+Python server on the same fixture and verifies that it reads rows written through GORM.
 
 ## Scope and remaining adoption work
 

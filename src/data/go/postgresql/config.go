@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
-
-var openDatabase = gorm.Open
 
 type connection struct {
 	FormatVersion int    `json:"format_version"`
@@ -28,8 +28,8 @@ type connection struct {
 }
 
 // Open reads the private connection file and configures a pool without migrating tables.
-// An empty path reads POSTGRES_CONNECTION_FILE. Connections are established lazily;
-// callers use GORM's WithContext for query deadlines and transactions.
+// An empty path reads POSTGRES_CONNECTION_FILE. Opening authenticates against
+// PostgreSQL; callers use GORM's WithContext for query deadlines and transactions.
 func Open(path string) (*gorm.DB, error) {
 	if path == "" {
 		path = os.Getenv("POSTGRES_CONNECTION_FILE")
@@ -55,16 +55,18 @@ func Open(path string) (*gorm.DB, error) {
 	query.Set("sslmode", settings.SSLMode)
 	query.Set("connect_timeout", "5")
 	address.RawQuery = query.Encode()
-	database, err := openDatabase(postgres.Open(address.String()), &gorm.Config{DisableAutomaticPing: true, Logger: logger.Default.LogMode(logger.Silent)})
+	config, err := pgx.ParseConfig(address.String())
 	if err != nil {
 		return nil, err
 	}
-	pool, err := database.DB()
-	if err != nil {
-		return nil, err
-	}
+	pool := stdlib.OpenDB(*config)
 	pool.SetMaxOpenConns(5)
 	pool.SetMaxIdleConns(5)
 	pool.SetConnMaxLifetime(30 * time.Minute)
+	database, err := gorm.Open(postgres.New(postgres.Config{Conn: pool}), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
 	return database, nil
 }

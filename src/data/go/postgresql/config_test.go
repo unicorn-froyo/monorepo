@@ -2,17 +2,21 @@ package postgresql
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"gorm.io/gorm"
 )
 
 func TestOpenConnectionContractAndPool(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "connection.json")
-	settings := connection{FormatVersion: 1, Host: "localhost", Port: 5432, Database: "testdb", User: "app", Password: "p@:/?#", SSLMode: "disable"}
+	data, err := os.ReadFile(os.Getenv("POSTGRES_CONNECTION_FILE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings connection
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
 	write := func(value any) {
 		t.Helper()
 		data, err := json.Marshal(value)
@@ -37,6 +41,13 @@ func TestOpenConnectionContractAndPool(t *testing.T) {
 	if pool.Stats().MaxOpenConnections != 5 {
 		t.Fatal("pool is not bounded")
 	}
+	var currentDatabase, currentUser string
+	if err := pool.QueryRow("SELECT current_database(), current_user").Scan(&currentDatabase, &currentUser); err != nil {
+		t.Fatal(err)
+	}
+	if currentDatabase != settings.Database || currentUser != settings.User {
+		t.Fatal("did not connect to the fixture database as the application role")
+	}
 	if _, err := Open(path + ".missing"); err == nil {
 		t.Fatal("missing file accepted")
 	}
@@ -57,16 +68,17 @@ func TestOpenConnectionContractAndPool(t *testing.T) {
 			t.Fatalf("invalid settings accepted: %+v", invalid)
 		}
 	}
-	write(settings)
-	original := openDatabase
-	t.Cleanup(func() { openDatabase = original })
-	want := errors.New("dialector failed")
-	openDatabase = func(gorm.Dialector, ...gorm.Option) (*gorm.DB, error) { return nil, want }
-	if _, err := Open(path); !errors.Is(err, want) {
-		t.Fatalf("got %v, want %v", err, want)
-	}
-	openDatabase = func(gorm.Dialector, ...gorm.Option) (*gorm.DB, error) { return &gorm.DB{Config: &gorm.Config{}}, nil }
+	invalid := settings
+	invalid.Password += "-incorrect"
+	write(invalid)
 	if _, err := Open(path); err == nil {
-		t.Fatal("invalid GORM pool accepted")
+		t.Fatal("PostgreSQL accepted incorrect credentials")
+	}
+	invalid = settings
+	invalid.SSLMode = "verify-full"
+	write(invalid)
+	t.Setenv("PGSSLROOTCERT", filepath.Join(t.TempDir(), "missing-ca.pem"))
+	if _, err := Open(path); err == nil {
+		t.Fatal("missing TLS trust root accepted")
 	}
 }

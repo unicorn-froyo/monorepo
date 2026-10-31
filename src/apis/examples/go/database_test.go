@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -211,40 +212,93 @@ func TestApplicationPermissionsAndConstraints(t *testing.T) {
 }
 
 func TestDatabaseMainUsesExistingServer(t *testing.T) {
-	db := database(t)
-	previousOpen, previousListen, previousFatal := openDatabase, listenAndServe, logFatal
-	t.Cleanup(func() { openDatabase, listenAndServe, logFatal = previousOpen, previousListen, previousFatal })
-	t.Setenv("POSTGRES_CONNECTION_FILE", "injected.json")
+	previousListen, previousFatal := listenAndServe, logFatal
+	t.Cleanup(func() { listenAndServe, logFatal = previousListen, previousFatal })
 	want := errors.New("server stopped")
 	logFatal = func(values ...any) {
 		if len(values) != 1 || values[0] != want {
 			t.Fatalf("unexpected failure: %v", values)
 		}
 	}
-	openDatabase = func(path string) (*gorm.DB, error) {
-		if path != "injected.json" {
-			t.Fatal(path)
-		}
-		return db, nil
-	}
 	listenAndServe = func(server *http.Server) error {
 		response := httptest.NewRecorder()
 		server.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 		if response.Code != 200 {
-			t.Fatal("database was not injected")
+			t.Fatal("server did not connect to the fixture PostgreSQL")
 		}
 		return want
 	}
 	main()
-	openDatabase = func(string) (*gorm.DB, error) { return nil, want }
-	main()
-	openDatabase = func(string) (*gorm.DB, error) { return &gorm.DB{Config: &gorm.Config{}}, nil }
+	t.Setenv("POSTGRES_CONNECTION_FILE", filepath.Join(t.TempDir(), "missing.json"))
 	logFatal = func(values ...any) {
 		if len(values) != 1 || values[0] == nil {
-			t.Fatalf("invalid pool not rejected: %v", values)
+			t.Fatalf("missing connection file not rejected: %v", values)
 		}
 	}
 	main()
+}
+
+func TestGoServerProcessConnectsToPostgres(t *testing.T) {
+	db := database(t)
+	if err := db.Transaction(insertExample); err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener.Close()
+	server := filepath.Join(os.Getenv("TEST_SRCDIR"), os.Getenv("TEST_WORKSPACE"), os.Getenv("GO_SERVER_PATH"))
+	logPath := filepath.Join(os.Getenv("TEST_UNDECLARED_OUTPUTS_DIR"), "go-service.log")
+	output, err := os.Create(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer output.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, server, "--port="+port)
+	command.Stdout, command.Stderr = output, output
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { cancel(); command.Wait() }()
+	client := http.Client{Timeout: time.Second}
+	for {
+		response, err := client.Get("http://" + address + "/readyz")
+		if err == nil {
+			response.Body.Close()
+			if response.StatusCode == http.StatusOK {
+				break
+			}
+		}
+		if ctx.Err() != nil {
+			contents, _ := os.ReadFile(logPath)
+			t.Fatalf("Go server did not become ready: %s", contents)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	// Change the shared database after startup to verify the server makes live queries.
+	if err := db.Model(&widgets.Widget{}).Where("id = ?", widgetID).Update("display_name", "updated 雪").Error; err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Get("http://" + address + "/database/widgets")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var rows []map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || len(rows) != 1 || rows[0]["id"] != widgetID || rows[0]["name"] != "updated 雪" || rows[0]["owner"] != "account" {
+		t.Fatalf("Go server did not read live PostgreSQL data: status=%d rows=%v", response.StatusCode, rows)
+	}
 }
 
 func TestPythonAppReadsGoORMRecords(t *testing.T) {

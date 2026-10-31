@@ -12,16 +12,18 @@ contexts, and transactions; Flyway owns migrations.
 ## Checks
 
 - `bazelisk build //...` passed.
-- `bazelisk test //...` passed: all 151 test targets, including Go and Python
+- `bazelisk test //...` passed: all 150 test targets, including Go and Python
   PostgreSQL integration tests. Unchanged results were cached.
 - Go configuration, model, and service coverage targets each enforce the
   repository's existing 100% aggregate line threshold and emit portable
   `lcov.info` plus raw `coverage.out`.
-- Configuration coverage is 36/36 lines, models/store 14/14, and HTTP/server
-  52/52. LCOV source records contain workspace-relative application paths.
+- Configuration coverage is 38/38 lines, models/store 14/14, and HTTP/server
+  49/49. LCOV source records contain workspace-relative application paths.
 - Model tests validate table/column bindings and relationship metadata against
   the shared schema contract. Connection tests validate configuration failures,
-  TLS policy, bounded pooling, and GORM initialization failures.
+  TLS policy, bounded pooling, and real PostgreSQL authentication failures.
+  The configuration test runs through the database coverage fixture and its
+  native input target is manual, so it is counted once in wildcard test runs.
 - Real GORM tests cover exact bigint/decimal/UUID/bytea/JSONB/timestamp values,
   nullable fields, parent/child loading, three-table commit/rollback, conditional
   version writes, SQLSTATE constraints, application permissions, and readiness
@@ -35,6 +37,10 @@ contexts, and transactions; Flyway owns migrations.
   Listing has no implicit 100-row cap, matching the Python endpoint.
 - A Go test starts the existing Python server on the same database and verifies
   that Python's SQLAlchemy mappings read records written through GORM.
+- A process test launches the actual Go server against the fixture, changes a row
+  after startup, and verifies that HTTP reads the updated name and its owner.
+  Startup and configuration tests call the real PostgreSQL opener; no database
+  mocks or fabricated GORM handles are used.
 
 The integration entrypoint is
 `bazelisk test //src/apis/examples/go:get_widgets_example_go_coverage_test`.
