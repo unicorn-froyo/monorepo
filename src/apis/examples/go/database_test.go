@@ -130,18 +130,18 @@ func TestDatabaseHTTPAndReadiness(t *testing.T) {
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "https://example.com"+path, nil))
 		return response
 	}
-	if got := request("/database/widgets"); got.Code != 200 || got.Body.String() != "[]" {
+	if got := request("/widgets"); got.Code != 200 || got.Body.String() != "[]" {
 		t.Fatalf("empty result: %s", got.Body.String())
 	}
 	if err := db.Transaction(insertExample); err != nil {
 		t.Fatal(err)
 	}
-	response := request("/database/widgets")
+	response := request("/widgets")
 	var result []map[string]string
 	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if response.Code != 200 || len(result) != 1 || result[0]["id"] != widgetID || result[0]["owner"] != "account" {
+	if response.Code != 200 || len(result) != 1 || result[0]["id"] != widgetID || result[0]["owner"] != "account" || result[0]["name"] != "雪☃" {
 		t.Fatalf("query response: %+v", result)
 	}
 	if response.Header().Get("Strict-Transport-Security") != "max-age=31536000" {
@@ -150,8 +150,8 @@ func TestDatabaseHTTPAndReadiness(t *testing.T) {
 	if got := request("/readyz"); got.Code != 200 {
 		t.Fatal("database not ready")
 	}
-	if got := request("/widgets"); got.Code != 202 || got.Body.String() != "[]" {
-		t.Fatal("base endpoint changed")
+	if got := request("/database/widgets"); got.Code != http.StatusNotFound {
+		t.Fatal("removed database-specific route is still registered")
 	}
 	pool, err := db.DB()
 	if err != nil {
@@ -160,14 +160,14 @@ func TestDatabaseHTTPAndReadiness(t *testing.T) {
 	if err := pool.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if got := request("/database/widgets"); got.Code != 500 {
+	if got := request("/widgets"); got.Code != 500 {
 		t.Fatal("query failure hidden")
 	}
 	if got := request("/readyz"); got.Code != 503 {
 		t.Fatal("readiness failure hidden")
 	}
 	empty := newHandler(nil)
-	for path, want := range map[string]int{"/readyz": 200, "/database/widgets": 503} {
+	for path, want := range map[string]int{"/readyz": 200, "/widgets": 503} {
 		recorder := httptest.NewRecorder()
 		empty.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		if recorder.Code != want {
@@ -302,7 +302,7 @@ func TestGoServerProcessConnectsToPostgres(t *testing.T) {
 	if err := db.Model(&widgets.Widget{}).Where("id = ?", widgetID).Update("display_name", "updated 雪").Error; err != nil {
 		t.Fatal(err)
 	}
-	response, err := client.Get("http://" + address + "/database/widgets")
+	response, err := client.Get("http://" + address + "/widgets")
 	if err != nil {
 		t.Fatal(err)
 	}

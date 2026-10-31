@@ -145,9 +145,10 @@ and context-controlled serving. The example's `run` function opens and closes it
 database pool; the thin `main.go` entrypoint handles flags, termination signals,
 and process exit after `run` returns. No mutable startup hooks are used.
 HTTP handlers depend on the store's `List` and `Ready` operations; GORM queries
-live in `example/widgets/go/store.go`. As in Python, `/database/widgets` returns
-widgets ordered by ID with owner names, and `/readyz` checks connectivity.
-The ordinary `/widgets` behavior remains available without database configuration.
+live in `example/widgets/go/store.go`. `GET /widgets` returns `200` with persisted
+widgets ordered by ID and including owner names, or `[]` for an empty database.
+It returns `503` without database configuration and `500` on a query failure.
+The Go service has no `/database/widgets` route. `/readyz` checks connectivity.
 
 Go mappings live under `example/widgets/go`. Decimal amounts use exact decimal
 strings, versions use `int64`, JSONB uses `json.RawMessage`, nullable text uses a

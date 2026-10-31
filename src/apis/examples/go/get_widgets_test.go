@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	widgets "github.com/unicorn-froyo/monorepo/src/data/example/widgets/go"
 )
 
 func TestRunWithoutDatabase(t *testing.T) {
@@ -51,10 +52,10 @@ func TestGetWidgets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	request := httptest.NewRequest(http.MethodGet, "/widgets", nil)
 	response := httptest.NewRecorder()
-	newHandler(nil).ServeHTTP(response, request)
+	newHandler(widgets.NewStore(database(t))).ServeHTTP(response, request)
 
-	if response.Code != http.StatusAccepted {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusAccepted)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}
 	if got := response.Header().Get("X-Content-Type-Options"); got != "nosniff" {
 		t.Fatalf("X-Content-Type-Options = %q, want nosniff", got)

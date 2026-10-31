@@ -17,9 +17,6 @@ type widgetStore interface {
 func newHandler(store widgetStore) http.Handler {
 	service := api.New()
 	service.Handle(http.MethodGet, "/widgets", func(context *gin.Context) {
-		context.JSON(http.StatusAccepted, []any{})
-	})
-	service.Handle(http.MethodGet, "/database/widgets", func(context *gin.Context) {
 		if store == nil {
 			context.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Database is not configured"})
 			return

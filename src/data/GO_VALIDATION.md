@@ -18,7 +18,7 @@ contexts, and transactions; Flyway owns migrations.
   repository's existing 100% aggregate line threshold and emit portable
   `lcov.info` plus raw `coverage.out`.
 - Configuration coverage is 38/38 lines, models/store 14/14, handler/startup
-  39/39, and shared HTTP server 11/11. LCOV source records contain workspace-relative
+  36/36, and shared HTTP server 11/11. LCOV source records contain workspace-relative
   application paths. The binary's thin `main.go` entrypoint is exercised by process
   tests for successful startup, interrupt shutdown, and configuration failure.
 - Model tests validate table/column bindings and relationship metadata against
@@ -30,9 +30,11 @@ contexts, and transactions; Flyway owns migrations.
   nullable fields, parent/child loading, three-table commit/rollback, conditional
   version writes, SQLSTATE constraints, application permissions, and readiness
   and query failures.
-- The existing Go app retains `GET /widgets` returning `202 []` and shared
-  response headers. Its existing server entrypoint uses optional database
-  configuration; no second app/server was introduced.
+- The Go app's existing `GET /widgets` returns `200` with persisted widget IDs,
+  names, and owner names, including `[]` for an empty database. Missing database
+  configuration returns `503`; query failures return `500`. Shared response
+  headers apply. `/database/widgets` is not registered. The server entrypoint
+  uses the connection file; no second app/server was introduced.
 - Startup owns the connection pool and gives the handler a widget store.
   Shared transport construction and serving live in `src/apis/go/server`.
   The example's `run` returns errors and closes the pool before `main` handles
