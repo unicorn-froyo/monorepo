@@ -1,5 +1,8 @@
 module(name = "com_unicorn_froyo")
 
+postgresql = use_extension("//tools/testing/postgresql:repositories.bzl", "postgresql")
+use_repo(postgresql, "postgresql_darwin_amd64", "postgresql_darwin_arm64v8", "postgresql_linux_amd64", "postgresql_linux_arm64v8")
+
 bazel_dep(name = "aspect_rules_js", version = "3.5.1")
 bazel_dep(name = "aspect_rules_ts", version = "3.10.1")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")

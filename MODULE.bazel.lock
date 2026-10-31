@@ -337,6 +337,47 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//tools/testing/postgresql:repositories.bzl%postgresql": {
+      "general": {
+        "bzlTransitiveDigest": "fufhUqBh/eMdiFxAGofSV032Vo4ATyjWWEc7xoy5DYI=",
+        "usagesDigest": "Vz7xC1e+rOgwbN3HE8WLE8bno/O5bFRx3o/L3hECves=",
+        "recordedInputs": [],
+        "generatedRepoSpecs": {
+          "postgresql_darwin_amd64": {
+            "repoRuleId": "@@//tools/testing/postgresql:repositories.bzl%_postgresql_repository",
+            "attributes": {
+              "platform": "darwin-amd64",
+              "sha256": "667a0eea70157656649417777af452148f6c79ae3654b2cd057a37fd701bd9e9",
+              "archive": "postgres-darwin-x86_64.txz"
+            }
+          },
+          "postgresql_darwin_arm64v8": {
+            "repoRuleId": "@@//tools/testing/postgresql:repositories.bzl%_postgresql_repository",
+            "attributes": {
+              "platform": "darwin-arm64v8",
+              "sha256": "b8c73288326af937b632208110b1d629c404ebef7519f8bcc7fd72404c68a36a",
+              "archive": "postgres-darwin-arm_64.txz"
+            }
+          },
+          "postgresql_linux_amd64": {
+            "repoRuleId": "@@//tools/testing/postgresql:repositories.bzl%_postgresql_repository",
+            "attributes": {
+              "platform": "linux-amd64",
+              "sha256": "a6c44794a7a258621b8cb98c196bf621cdd705d9fa73c3628166b658c419877a",
+              "archive": "postgres-linux-x86_64.txz"
+            }
+          },
+          "postgresql_linux_arm64v8": {
+            "repoRuleId": "@@//tools/testing/postgresql:repositories.bzl%_postgresql_repository",
+            "attributes": {
+              "platform": "linux-arm64v8",
+              "sha256": "47aa73724470a8bdb5e68e3978c1f07c577ab7a5c23b97b84f99d7e165f4876f",
+              "archive": "postgres-linux-arm_64.txz"
+            }
+          }
+        }
+      }
+    },
     "@@aspect_tools_telemetry+//:extension.bzl%telemetry": {
       "general": {
         "bzlTransitiveDigest": "ihzLOoAnQP6Y5iSYOhEjvb6uxEbA6ZgH8Qikau2lGRU=",

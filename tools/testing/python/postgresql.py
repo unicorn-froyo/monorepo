@@ -7,6 +7,7 @@ import re
 import secrets
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,7 @@ def wait_ready(connection: dict, password: str, deadline: float) -> None:
                 user="postgres",
                 password=password,
                 connect_timeout=1,
+                options="-c statement_timeout=1000",
             ) as conn:
                 conn.execute("SELECT 1")
             return
@@ -227,15 +229,142 @@ def postgres(fixture: dict, root: Path, client):
                     )
 
 
-def run(fixture: dict, command: list[str], client) -> int:
+def stop_process(process, signum=signal.SIGINT) -> None:
+    """Stop and reap a child without detaching it from Bazel's process group."""
+    if process.poll() is None:
+        process.send_signal(signum)  # SIGINT requests PostgreSQL fast shutdown.
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
+@contextmanager
+def native_postgres(fixture: dict, root: Path):
+    """Run PostgreSQL as a sandbox child with all state in the test directory."""
+    started = time.monotonic()
+    timings = {}
+    bundle = json.loads(Path(fixture["migrations"]).read_text())
+    validate(bundle)
+    admin, password = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
+    data = root / "data"
+    password_file = root / "admin-password"
+    connection_file = root / "connection.json"
+    process = None
+    env = {key: value for key, value in os.environ.items() if not key.startswith("PG")}
+    env.update(HOME=str(root), TMPDIR=str(root), LC_ALL="C")
+    try:
+        with os.fdopen(
+            os.open(password_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w"
+        ) as stream:
+            stream.write(admin)
+        with (root / "initdb.log").open("w") as log:
+            subprocess.run(
+                [
+                    str(Path(fixture["initdb"]).absolute()),
+                    "-D",
+                    str(data),
+                    "-U",
+                    "postgres",
+                    "--auth=scram-sha-256",
+                    "--encoding=UTF8",
+                    "--locale=C",
+                    "--no-instructions",
+                    f"--pwfile={password_file}",
+                ],
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=fixture["startup_timeout_seconds"],
+                check=True,
+            )
+        password_file.unlink()
+        with socket.socket() as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
+        connection = dict(
+            format_version=1,
+            host="127.0.0.1",
+            port=port,
+            database="postgres",
+            user="app",
+            password=password,
+            sslmode="disable",
+        )
+        with (root / "postgresql.log").open("w") as log:
+            process = subprocess.Popen(
+                [
+                    str(Path(fixture["postgres"]).absolute()),
+                    "-D",
+                    str(data),
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    str(port),
+                    "-c",
+                    "unix_socket_directories=",
+                    "-c",
+                    "max_connections=20",
+                    "-c",
+                    "shared_buffers=16MB",
+                    "-c",
+                    "statement_timeout=10000",
+                ],
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+        timings.update(pid=process.pid, port=port)
+        wait_ready(connection, admin, time.monotonic() + fixture["startup_timeout_seconds"])
+        timings["ready_seconds"] = time.monotonic() - started
+        with psycopg.connect(
+            host=connection["host"],
+            port=port,
+            dbname="postgres",
+            user="postgres",
+            password=admin,
+            autocommit=True,
+            connect_timeout=1,
+        ) as conn:
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(fixture["database"])))
+        connection["database"] = fixture["database"]
+        run_flyway(fixture, bundle, connection, admin, root)
+        grant_application(connection, admin, password, bundle)
+        timings["migrated_seconds"] = time.monotonic() - started
+        private_json(connection_file, connection)
+        yield {"POSTGRES_CONNECTION_FILE": str(connection_file)}
+    finally:
+        cleanup_started = time.monotonic()
+        try:
+            if process is not None:
+                stop_process(process)
+                timings["exit_code"] = process.returncode
+        finally:
+            password_file.unlink(missing_ok=True)
+            connection_file.unlink(missing_ok=True)
+            shutil.rmtree(data, ignore_errors=True)
+            for path in root.glob("*.log"):
+                path.write_text(
+                    path.read_text().replace(admin, "[REDACTED]").replace(password, "[REDACTED]")
+                )
+            timings["cleanup_seconds"] = time.monotonic() - cleanup_started
+            (root / "lifecycle.log").write_text(json.dumps(timings))
+
+
+def run(fixture: dict, command: list[str]) -> int:
     """Run coverage after fixture setup and preserve diagnostics before teardown."""
     output = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"])
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=os.environ["TEST_TMPDIR"]) as directory:
         root = Path(directory)
         try:
-            with postgres(fixture, root, client) as env:
-                return subprocess.call(command, env=dict(os.environ, **env))
+            with native_postgres(fixture, root) as env:
+                with subprocess.Popen(command, env=dict(os.environ, **env)) as child:
+                    try:
+                        return child.wait()
+                    finally:
+                        stop_process(child, signal.SIGTERM)
         finally:
             for path in root.glob("*.log"):
                 shutil.copyfile(path, output / path.name)
@@ -274,6 +403,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixture", type=Path)
     parser.add_argument("--dev", action="store_true")
+    parser.add_argument("--image", type=Path)
     parser.add_argument("--cleanup-run")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -282,13 +412,15 @@ def main() -> int:
         parser.error("supply --fixture and either --dev or a coverage executable after --")
     signal.signal(signal.SIGTERM, interrupted)
     try:
+        if not args.cleanup_run and not args.dev:
+            return run(json.loads(args.fixture.read_text()), command)
         with closing(docker.from_env(timeout=10)) as client:
             if args.cleanup_run:
                 cleanup(args.cleanup_run, client)
                 return 0
-            if args.dev:
-                return dev(json.loads(args.fixture.read_text()), client)
-            return run(json.loads(args.fixture.read_text()), command, client)
+            fixture = json.loads(args.fixture.read_text())
+            fixture.update(image=str(args.image), image_load_timeout_seconds=120)
+            return dev(fixture, client)
     except (
         DockerException,
         psycopg.Error,
@@ -296,6 +428,7 @@ def main() -> int:
         ValueError,
         RuntimeError,
         subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
     ) as error:
         print(f"PostgreSQL fixture failed: {type(error).__name__}; see test logs", file=sys.stderr)
         return 2

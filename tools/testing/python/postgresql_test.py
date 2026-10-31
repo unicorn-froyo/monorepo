@@ -34,6 +34,8 @@ class FixtureTest(unittest.TestCase):
             image=str(image),
             database="testdb",
             flyway="cli",
+            initdb="initdb",
+            postgres="postgres",
             image_load_timeout_seconds=120,
             startup_timeout_seconds=1,
             migration_timeout_seconds=1,
@@ -68,6 +70,66 @@ class FixtureTest(unittest.TestCase):
         self.assertEqual(json.loads(path.read_text()), {"password": "secret"})
         with self.assertRaises(FileExistsError):
             pg.private_json(path, {})
+
+    def test_native_startup_failure_and_test_failure_cleanup(self):
+        for failure in ("init", "spawn", "ready", "migration", "test", None):
+            with self.subTest(failure=failure):
+                root = self.root / str(failure)
+                root.mkdir()
+                process = MagicMock(pid=1234, returncode=0)
+                process.poll.return_value = None
+
+                def initialize(*_args, **_kwargs):
+                    (root / "data").mkdir()
+                    (root / "data" / "state").write_text("private")
+                    if failure == "init":
+                        raise RuntimeError("init")
+
+                with (
+                    patch.object(pg.subprocess, "run", side_effect=initialize),
+                    patch.object(pg.subprocess, "Popen", return_value=process) as spawn,
+                    patch.object(pg, "wait_ready") as ready,
+                    patch.object(pg.psycopg, "connect"),
+                    patch.object(pg, "run_flyway") as migrate,
+                    patch.object(pg, "grant_application"),
+                ):
+                    if failure == "spawn":
+                        spawn.side_effect = RuntimeError("spawn")
+                    if failure == "ready":
+                        ready.side_effect = RuntimeError("ready")
+                    if failure == "migration":
+                        migrate.side_effect = RuntimeError("migration")
+                    try:
+                        with pg.native_postgres(self.fixture, root) as env:
+                            config = json.loads(Path(env["POSTGRES_CONNECTION_FILE"]).read_text())
+                            self.assertEqual(config["database"], "testdb")
+                            self.assertEqual(config["user"], "app")
+                            self.assertNotIn("start_new_session", spawn.call_args.kwargs)
+                            self.assertNotIn("POSTGRES_TEST_NETWORK", env)
+                            if failure == "test":
+                                raise RuntimeError("test")
+                        self.assertIsNone(failure)
+                    except RuntimeError as error:
+                        self.assertEqual(str(error), failure)
+                self.assertFalse((root / "data").exists())
+                self.assertFalse((root / "admin-password").exists())
+                self.assertFalse((root / "connection.json").exists())
+                self.assertIn("cleanup_seconds", json.loads((root / "lifecycle.log").read_text()))
+                if failure not in ("init", "spawn"):
+                    process.send_signal.assert_called_once_with(pg.signal.SIGINT)
+                    process.wait.assert_called_once_with(timeout=5)
+
+    def test_postmaster_shutdown_escalates_and_handles_exited_process(self):
+        process = MagicMock()
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired("postgres", 5), 0]
+        pg.stop_process(process)
+        process.kill.assert_called_once()
+        self.assertEqual(process.wait.call_count, 2)
+        process.reset_mock()
+        process.poll.return_value = 1
+        pg.stop_process(process)
+        process.send_signal.assert_not_called()
 
     def test_ready_retries_authentication_and_bounds_wait(self):
         with (
@@ -183,7 +245,7 @@ class FixtureTest(unittest.TestCase):
 
     def test_run_retains_logs_and_coverage_status_without_secrets(self):
         @contextmanager
-        def fixture(_spec, root, _client):
+        def fixture(_spec, root):
             (root / "flyway.log").write_text("migration diagnostics")
             (root / "connection.json").write_text("secret")
             yield {"POSTGRES_CONNECTION_FILE": str(root / "connection.json")}
@@ -194,10 +256,12 @@ class FixtureTest(unittest.TestCase):
                 os.environ,
                 {"TEST_UNDECLARED_OUTPUTS_DIR": str(output), "TEST_TMPDIR": str(self.root)},
             ),
-            patch.object(pg, "postgres", fixture),
-            patch.object(pg.subprocess, "call", return_value=7) as call,
+            patch.object(pg, "native_postgres", fixture),
+            patch.object(pg.subprocess, "Popen") as call,
         ):
-            self.assertEqual(pg.run(self.fixture, ["coverage"], self.client), 7)
+            call.return_value.__enter__.return_value.wait.return_value = 7
+            call.return_value.__enter__.return_value.poll.return_value = 7
+            self.assertEqual(pg.run(self.fixture, ["coverage"]), 7)
             self.assertEqual((output / "flyway.log").read_text(), "migration diagnostics")
             self.assertFalse((output / "connection.json").exists())
             self.assertIn("POSTGRES_CONNECTION_FILE", call.call_args.kwargs["env"])

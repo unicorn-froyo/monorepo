@@ -1,41 +1,45 @@
 # Python PostgreSQL validation
 
-Local validation on 2026-10-30, on branch `feat/python-postgresql-flyway` based
-on `5d0ff0f`. Host: macOS arm64 with Colima and Docker Engine 29.2.1. Runtime:
-Python 3.14, PostgreSQL 17.10 from the pinned PostgreSQL image, Flyway OSS
-11.20.3, SQLAlchemy 2.1.6, and Psycopg 3.3.6.
+Native fixture validation on 2026-10-30, on branch
+`feat/python-postgresql-flyway`. Host: macOS arm64, using Bazel's
+`darwin-sandbox`. Runtime: Python 3.14, checksum-pinned PostgreSQL 17.10 native
+binaries, Flyway OSS 11.20.3, SQLAlchemy 2.1.6, and Psycopg 3.3.6.
 
 ## Functional evidence
 
-`bazelisk build //...` and `bazelisk test //...` pass: 142 test targets, with
-the database suites executing against the local daemon. The final test invocation
-reused unchanged test results and executed the changed Python checks and external
-database tests. New Python source remains subject to the existing 100% combined
-line/branch coverage threshold.
+The native fixture and existing ORM/HTTP integration tests pass under Bazel
+sandboxing without accessing Docker. The fixture's Python source passes the
+repository's 100% combined line/branch coverage gate, lint, formatting, and type
+checks.
 
 - Static schema checks reject malformed SQL, equivalent duplicate versions,
   invalid filenames/configuration, empty files, and disabled placeholders.
-  Inline suppression and large-file skipping do not bypass SQL validation.
 - Python ORM tests cover exact bigint/numeric/UUID/bytea/JSONB/timestamp values,
   relationships, SQLSTATE constraint errors, three-table commit/rollback, and
   separation between migration and application permissions.
 - An actual Uvicorn service process connects using the injected private file.
   Existing `/widgets` behavior and shared response-header requirements remain
   covered.
-- Real failing migrations prevent test execution and leave no fixture containers
-  or networks. Two simultaneously running fixtures accept conflicting primary
-  keys independently, proving database/port isolation.
-- Tests for startup failures, test failures, cancellation, log failures, secret
-  file permissions, explicit recovery, and development lifecycle pass under the
-  repository's unchanged 100% Python line/branch coverage gate.
-- The development target was started with `bazel run`, reached readiness, and
-  shut down successfully on Ctrl-C. No labeled fixture containers remained.
+- A real failing migration prevents test execution, reaps PostgreSQL, removes
+  database state and credentials, and retains structured Flyway diagnostics.
+- Two simultaneous native fixtures accept conflicting primary keys independently.
+- A real SIGTERM cancellation test verifies that both the coverage subprocess and
+  postmaster have exited and their temporary directories are removed.
+- Unit tests exercise initialization, spawn, readiness, migration, and test
+  failures, bounded shutdown escalation, permissions, redaction, and development
+  container recovery.
 - Flyway results are checked using structured JSON as well as exit status;
   unsuccessful or missing success indicators cannot launch application tests.
 
+The native process and declared inputs are subject to the selected Bazel sandbox.
+Linux namespace isolation is stronger than macOS sandboxing. No manual hard kill
+of an entire Bazel action is claimed validated here. Linux amd64 CI and native
+macOS amd64/Linux arm64 execution still require separate qualification.
+
 ## Repeated local smoke measurements
 
-These measurements were collected at `ebfe9d1`, before consolidating the database
+These historical **container-backed** measurements were collected at `ebfe9d1`,
+before replacing tests with native PostgreSQL or consolidating the database
 routes into the existing app/server entrypoint. Current tests use that single
 application and measure five intended source files; the six-file artifact count
 below describes the original sample.

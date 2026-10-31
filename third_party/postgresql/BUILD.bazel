@@ -1,0 +1,70 @@
+load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+
+package(default_visibility = ["//visibility:public"])
+
+bzl_lint_test(
+    name = "postgresql_bzl_lint_test",
+    data = ["BUILD.bazel"],
+)
+
+config_setting(
+    name = "darwin_amd64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+config_setting(
+    name = "darwin_arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+config_setting(
+    name = "linux_amd64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+alias(
+    name = "distribution",
+    actual = select({
+        ":darwin_amd64": "@postgresql_darwin_amd64//:distribution",
+        ":darwin_arm64": "@postgresql_darwin_arm64v8//:distribution",
+        ":linux_amd64": "@postgresql_linux_amd64//:distribution",
+        ":linux_arm64": "@postgresql_linux_arm64v8//:distribution",
+    }),
+)
+
+alias(
+    name = "initdb",
+    actual = select({
+        ":darwin_amd64": "@postgresql_darwin_amd64//:postgresql/bin/initdb",
+        ":darwin_arm64": "@postgresql_darwin_arm64v8//:postgresql/bin/initdb",
+        ":linux_amd64": "@postgresql_linux_amd64//:postgresql/bin/initdb",
+        ":linux_arm64": "@postgresql_linux_arm64v8//:postgresql/bin/initdb",
+    }),
+)
+
+alias(
+    name = "postgres",
+    actual = select({
+        ":darwin_amd64": "@postgresql_darwin_amd64//:postgresql/bin/postgres",
+        ":darwin_arm64": "@postgresql_darwin_arm64v8//:postgresql/bin/postgres",
+        ":linux_amd64": "@postgresql_linux_amd64//:postgresql/bin/postgres",
+        ":linux_arm64": "@postgresql_linux_arm64v8//:postgresql/bin/postgres",
+    }),
+)

@@ -78,12 +78,5 @@ py_coverage_test(
         "//tools/migrations/flyway:sqlfluff.cfg",
     ],
     source_targets = [":lib"],
-    tags = [
-        "external",
-        "local",
-        "no-remote",
-        "no-sandbox",
-        "requires-docker",
-    ],
     deps = [":lib"],
 )

@@ -74,6 +74,4 @@ _py_coverage_rule_test = rule(
 def py_coverage_test(name, postgres = None, tags = None, **kwargs):
     """Run normal coverage, optionally with an isolated migrated PostgreSQL DB."""
     tags = list(tags or [])
-    if postgres:
-        tags += ["local", "external", "requires-docker", "no-remote", "no-sandbox"]
     _py_coverage_rule_test(name = name, postgres = postgres, tags = tags, **kwargs)
