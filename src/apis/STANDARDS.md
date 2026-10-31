@@ -17,8 +17,8 @@ copying it into each endpoint.
   `200` with persisted widgets, or `503` when their database is not configured;
   database integration extends the existing resource endpoint.
 - Build and test through Bazel. Package example services as OCI-compatible
-  images, keeping image targets `manual` so `bazelisk build //...` does not
-  load them.
+  images included in `bazelisk build //...` on compatible platforms. Load images
+  into Docker explicitly with `bazelisk run` on their load targets.
 
 ## Response-header policy
 

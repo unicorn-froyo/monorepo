@@ -19,8 +19,9 @@ use [Axum](https://github.com/tokio-rs/axum), and TypeScript APIs use
 [NestJS](https://nestjs.com/) with its Express adapter.
 
 APIs are distributed as OCI-compatible images composed from Bazel-built layers
-with `rules_oci`. Image targets are tagged `manual`, keeping image loading out of
-normal `bazelisk build //...` operations.
+with `rules_oci`. Compatible image targets are included in normal
+`bazelisk build //...` operations. Loading an image into Docker requires
+`bazelisk run` on its load target.
 
 Build the examples from the repository root:
 
@@ -63,7 +64,7 @@ The Rust image packages the Bazel-built server directly and starts without
 running Cargo or downloading dependencies. Build its image on a Linux amd64 or
 arm64 worker matching the intended image architecture. Image builds from macOS
 and cross-compilation are unsupported; native Rust builds and tests still work
-on macOS. Use the manual Bazel image and smoke-test targets to validate each
+on macOS. Use the Bazel image and manual smoke-test targets to validate each
 Linux image architecture on a matching native worker.
 
 All supported API stacks follow the [cross-platform API standards](src/apis/STANDARDS.md),

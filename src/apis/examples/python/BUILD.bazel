@@ -96,7 +96,6 @@ py_image(
     name = "get_widgets_example_oci",
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-python:latest"],
-    tags = ["manual"],
     tars = [":application_layer"],
 )
 

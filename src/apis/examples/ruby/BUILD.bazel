@@ -101,7 +101,6 @@ rb_image(
     ],
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-ruby:latest"],
-    tags = ["manual"],
     target_compatible_with = ["@platforms//os:linux"],
     tars = [
         ":gems_layer",

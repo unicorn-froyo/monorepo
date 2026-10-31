@@ -1,6 +1,7 @@
 # Bazel
 
 - Use Bazelisk.
+- Only targets declared through rules or macros whose names match `deploy_*` may use the `manual` tag. Do not use `manual` on image, packaging, test, or other non-deployment rules; use platform compatibility constraints for unsupported platforms.
 - On macOS, install Bazelisk and OpenSSL with Homebrew.
 - Store all dependency lockfiles under `third_party/`, grouped by ecosystem; never place dependency lockfiles at the repository root.
 - Dependency locks belong under `third_party/{ecosystem}/` for every language ecosystem that uses a lockfile. This includes Python, Go, Ruby, Rust, and npm-managed toolchains when applicable.
@@ -30,7 +31,7 @@
 - Enforce static type checking through Bazel for every supported language. Use `{prefix}_typecheck_test` when ordinary Bazel builds do not already enforce it. Go, Java, Rust, and strict TypeScript builds provide type checking; Python uses a dedicated Pyright rule.
 - Keep standard upstream rule names such as `go_library`, `rust_binary`, and `ts_project`. Do not wrap them just to add a repository prefix. Use the ecosystem's Bazel dependency workflows instead of adding `{prefix}_dependencies_test`, `{prefix}_dependencies_check`, or `{prefix}_dependencies_update`.
 - Use the ecosystem's conventional formatter, linter, compiler or type checker, test runner, and coverage tool. State coverage metrics and thresholds explicitly; different tools do not necessarily measure the same thing. Document an intentionally unsupported capability and its rationale instead of adding a no-op rule.
-- Package build outputs directly into OCI artifacts. Container startup must not compile code, install packages, or access registries. For a new language, explicitly build its manual OCI targets and verify the example service and image architecture on each supported native Linux platform when native dependencies prevent cross-compilation.
+- Package build outputs directly into OCI artifacts. Container startup must not compile code, install packages, or access registries. For a new language, explicitly build its OCI targets and verify the example service and image architecture on each supported native Linux platform when native dependencies prevent cross-compilation.
 
 ## Ruby typing
 
