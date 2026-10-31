@@ -7,7 +7,10 @@ package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "lib",
-    srcs = ["models.py"],
+    srcs = [
+        "models.py",
+        "store.py",
+    ],
     deps = ["//third_party/pypi:postgresql"],
 )
 
@@ -15,7 +18,10 @@ py_coverage_test(
     name = "models_integration_test",
     size = "large",
     timeout = "long",
-    srcs = ["models_test.py"],
+    srcs = [
+        "models_test.py",
+        "store_test.py",
+    ],
     postgres = "//src/data/example/widgets:postgres",
     source_targets = [":lib"],
     deps = [

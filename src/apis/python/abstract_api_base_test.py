@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import Depends, Response
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from starlette.types import Message, Receive, Scope, Send
 
@@ -55,6 +56,20 @@ class TestApiBase(TestCase):
                             self.assertTrue(fail)
                         factory.return_value.dispose.assert_called_once_with()
                         self.assertIsNone(api.engine)
+
+    def test_startup_connection_failure_disposes_engine(self):
+        """A bad configured connection fails startup and releases its pool."""
+        with patch.dict(os.environ, {"POSTGRES_CONNECTION_FILE": "/private/connection.json"}):
+            with patch("src.apis.python.abstract_api_base.engine_from_file") as factory:
+                factory.return_value.connect.side_effect = OperationalError(
+                    "SELECT 1", {}, Exception("unavailable")
+                )
+                api = self.Api()
+                with self.assertRaises(OperationalError):
+                    with TestClient(api.app):
+                        self.fail("Startup accepted an unavailable database")
+                factory.return_value.dispose.assert_called_once_with()
+                self.assertIsNone(api.engine)
 
     def test_lifespan_borrows_injected_engine(self):
         """Explicit injection takes precedence over process configuration."""
@@ -111,8 +126,10 @@ class TestApiBase(TestCase):
         client = TestClient(self.Api(engine).app, raise_server_exceptions=False)
         self.assertEqual(client.get("/readyz").json(), {"ready": True})
         engine.connect.return_value.__enter__.return_value.execute.assert_called_once()
-        engine.connect.side_effect = RuntimeError("unavailable")
-        self.assertEqual(client.get("/readyz").status_code, 500)
+        engine.connect.side_effect = OperationalError("SELECT 1", {}, Exception("unavailable"))
+        response = client.get("/readyz")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"ready": False})
 
     def test_is_abstract(self):
         """The base cannot be instantiated without route configuration."""

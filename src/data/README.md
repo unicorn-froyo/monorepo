@@ -105,11 +105,16 @@ The shared API base uses the connection file when configured. Without database
 configuration, `/widgets` returns 503.
 
 The shared `AbstractApiBase` creates a bounded SQLAlchemy engine from
-`POSTGRES_CONNECTION_FILE` during FastAPI startup and disposes it on shutdown.
-It registers `/readyz` and exposes `database_session` as a FastAPI dependency.
-Routes declare `session: Session = Depends(self.database_session)` and keep
-application queries in the route. Each request closes its session on success or
-failure, rolling back unfinished transactions; writes must explicitly use
+`POSTGRES_CONNECTION_FILE` during FastAPI startup, verifies connectivity, and
+disposes it on shutdown, including when the startup check fails. It registers
+`/readyz`, which returns `503 {"ready": false}` when the configured database is
+unavailable, and exposes `database_session` as a FastAPI dependency.
+The widgets API composes that dependency into an injected `WidgetStore` from
+[`example/widgets/python/store.py`](example/widgets/python/store.py). The store
+owns queries and eagerly loads owners in one query; the route maps results to HTTP
+responses and returns a sanitized `500` if a database query fails. Tests can replace
+sessions through FastAPI's `app.dependency_overrides`. Each request closes its
+session on success or failure, rolling back unfinished transactions; writes must explicitly use
 `session.begin()` or `session.commit()`. Tests may inject an engine instead;
 its caller owns disposal. The API never changes the schema. The server entrypoint
 only starts Uvicorn.

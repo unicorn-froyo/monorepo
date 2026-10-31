@@ -5,8 +5,9 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from sqlalchemy import Engine, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.apis.python.security_headers import SecurityHeadersMiddleware
@@ -32,10 +33,13 @@ class AbstractApiBase(ABC):  # pylint: disable=too-few-public-methods
     async def lifespan(self, _app: FastAPI) -> AsyncIterator[None]:
         """Own configured engines for the app lifetime; injected engines are borrowed."""
         owned_engine = None
-        if self.engine is None and "POSTGRES_CONNECTION_FILE" in os.environ:
+        if self.engine is None and os.environ.get("POSTGRES_CONNECTION_FILE"):
             owned_engine = engine_from_file()
             self.engine = owned_engine
         try:
+            if owned_engine is not None:
+                with owned_engine.connect() as connection:
+                    connection.execute(select(1))
             yield
         finally:
             if owned_engine is not None:
@@ -54,11 +58,15 @@ class AbstractApiBase(ABC):  # pylint: disable=too-few-public-methods
         with Session(self.engine) as session:
             yield session
 
-    def ready(self) -> dict[str, bool]:
+    def ready(self, response: Response) -> dict[str, bool]:
         """Check the configured database before reporting service readiness."""
         if self.engine is not None:
-            with self.engine.connect() as connection:
-                connection.execute(select(1))
+            try:
+                with self.engine.connect() as connection:
+                    connection.execute(select(1))
+            except SQLAlchemyError:
+                response.status_code = 503
+                return {"ready": False}
         return {"ready": True}
 
     @abstractmethod

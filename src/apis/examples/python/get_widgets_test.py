@@ -5,6 +5,7 @@ from unittest import TestCase, main
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from src.apis.examples.python.get_widgets import GetWidgets, app
 
@@ -14,9 +15,11 @@ class TestGetWidgets(TestCase):
 
     def test_get_widgets(self):
         """An empty database returns an empty collection with the shared headers."""
-        with patch("src.apis.python.abstract_api_base.Session") as session:
-            session.return_value.__enter__.return_value.scalars.return_value = []
-            response = TestClient(GetWidgets(MagicMock()).app).get("/widgets")
+        api = GetWidgets()
+        session = MagicMock()
+        session.scalars.return_value = []
+        api.app.dependency_overrides[api.database_session] = lambda: session
+        response = TestClient(api.app).get("/widgets")
 
         self.assertEqual(response.status_code, 200)
         self.assertListEqual(response.json(), [])
@@ -59,6 +62,15 @@ class TestGetWidgets(TestCase):
             self.assertEqual(client.get("/readyz").json(), {"ready": True})
             session.assert_called_once_with(engine)
             engine.connect.return_value.__enter__.return_value.execute.assert_called_once()
+
+    def test_query_failure_returns_sanitized_error(self):
+        with patch("src.apis.python.abstract_api_base.Session") as session:
+            session.return_value.__enter__.return_value.scalars.side_effect = OperationalError(
+                "private query", {}, Exception("private connection details")
+            )
+            response = TestClient(GetWidgets(MagicMock()).app).get("/widgets")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json(), {"detail": "Database query failed"})
 
 
 if __name__ == "__main__":

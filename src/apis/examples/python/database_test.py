@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import signal
 import subprocess
 import time
 import unittest
@@ -97,6 +98,11 @@ class DatabaseTest(unittest.TestCase):
             self.assertEqual(session.scalar(select(func.count()).select_from(Owner)), 0)
 
     def test_service_process_connects_to_injected_postgres(self):
+        owner = Owner(id=uuid4(), name="account")
+        widget = self.widget(owner)
+        identifier = widget.id
+        with Session(self.engine) as session, session.begin():
+            session.add(widget)
         server = Path("src/apis/examples/python/server").resolve()
         log = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"]) / "service.log"
         with log.open("w") as output:
@@ -121,9 +127,37 @@ class DatabaseTest(unittest.TestCase):
                     time.sleep(0.05)
                 else:
                     self.fail("Service did not become ready: " + log.read_text())
+                # An update after startup proves the process reads live database state.
+                with self.engine.begin() as connection:
+                    connection.execute(
+                        text("UPDATE widgets SET display_name = :name WHERE id = :id"),
+                        {"name": "updated 雪", "id": identifier},
+                    )
+                assert match is not None
+                with urlopen(f"http://127.0.0.1:{match[1]}/widgets", timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(
+                        json.load(response),
+                        [{"id": str(identifier), "name": "updated 雪", "owner": "account"}],
+                    )
             finally:
                 process.terminate()
-                process.wait(timeout=10)
+                self.assertIn(process.wait(timeout=10), (0, -signal.SIGTERM))
+                self.assertIn("Application shutdown complete", log.read_text())
+
+    def test_service_process_rejects_missing_connection_file(self):
+        server = Path("src/apis/examples/python/server").resolve()
+        missing = Path(os.environ["TEST_TMPDIR"]) / "missing-connection.json"
+        result = subprocess.run(
+            [str(server), "--port=0"],
+            env={**os.environ, "POSTGRES_CONNECTION_FILE": str(missing)},
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Application startup failed", result.stderr)
 
 
 if __name__ == "__main__":
