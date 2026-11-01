@@ -76,3 +76,9 @@ test("does not trust a spoofed HTTPS forwarding header", async (t) => {
     .set("X-Forwarded-Proto", "https");
   assert.equal(response.headers["strict-transport-security"], undefined);
 });
+
+test("closes the application when database startup fails", async () => {
+  await assert.rejects(
+    createApi(HealthModule, { connectionFile: "/missing-postgres-file" }),
+  );
+});

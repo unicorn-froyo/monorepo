@@ -40,7 +40,7 @@ dependency definitions and lockfiles under `third_party/`.
 | Python | [SQLAlchemy ORM](https://docs.sqlalchemy.org/en/21/orm/), `sqlalchemy` | [Psycopg 3](https://www.psycopg.org/psycopg3/), `psycopg`, underneath; SQLAlchemy sessions, relationships, transactions, and pooling. |
 | Ruby | [Active Record](https://guides.rubyonrails.org/active_record_basics.html), `activerecord` supplied by Rails | [ruby-pg](https://github.com/ged/ruby-pg), gem `pg`, underneath; Rails models, associations, transactions, and connection pooling. |
 | Rust | [SeaORM](https://www.sea-ql.org/SeaORM/), crate `sea-orm` | PostgreSQL backend with Tokio-compatible runtime/TLS features; async entities, relationships, transactions, and pooling. |
-| TypeScript | [Prisma ORM](https://docs.prisma.io/docs/orm/overview/introduction/what-is-prisma), `prisma` and `@prisma/client` | Generated typed client, relations, and transactions. Select and pin the PostgreSQL adapter required by the chosen release; use node-postgres where supported. |
+| TypeScript | [TypeORM](https://typeorm.io/), `typeorm` and `pg` | Active Record entity classes, relationships, and native transactions over node-postgres. No generated client. |
 
 The ORMs provide application persistence; Flyway alone owns schema migration
 execution. Do not introduce a shared repository generator. Application APIs may
@@ -50,17 +50,16 @@ transactions must use the same ORM transaction context throughout an operation.
 
 Disable competing schema mutation paths: Rails migrations and schema loading,
 Hibernate automatic DDL updates, SQLAlchemy `create_all` and Alembic migrations,
-GORM `AutoMigrate`, SeaORM migration/schema-sync facilities, and Prisma migration
-or schema-push commands. Hibernate schema validation may remain enabled. Do not
+GORM `AutoMigrate`, SeaORM migration/schema-sync facilities, and TypeORM
+`synchronize`, `schema:sync`, or ORM-owned migrations. Hibernate schema validation may remain enabled. Do not
 let framework test setup silently replace Flyway with an ORM-created schema.
 
 SQL migrations and ORM mappings are separate artifacts and must stay aligned.
 Integration tests build a database using Flyway and exercise actual ORM models,
-relationships, constraints, and transaction behavior. For
-[Prisma's external migration workflow](https://docs.prisma.io/docs/orm/prisma-schema/introspection),
-prove introspection and client generation under Bazel early, using the pinned
-release's supported commands. If that release cannot support Flyway-owned SQL,
-revisit the TypeScript ORM before expanding adoption.
+relationships, constraints, and transaction behavior. TypeScript uses handwritten
+TypeORM Active Record models and the same migrated PostgreSQL integration tests
+as the other languages; it requires no client generation or separate schema
+introspection system.
 
 Language APIs may differ. The shared requirements are correct SQL types, explicit
 transaction boundaries, parameter binding, bounded pools/timeouts, TLS in deployed
@@ -185,13 +184,10 @@ artifacts. Versioned migration SQL is declared Bazel runtime data.
 
 Use the existing language test, lint, formatting, typing, and coverage rules for
 application and tool code equally. Any Node tooling is authored in TypeScript.
-No source-generation step may connect to a developer's database. ORM generation
-uses declared inputs and pinned tools; introspection uses only a disposable
-database migrated from declared SQL. Expose introspection as an explicit Bazel
-workflow that produces reviewable mapping inputs, then generate clients without
-a live database during ordinary builds. CI must detect stale generated mappings
-or schema inputs. Do not check in emitted runtime client code merely to avoid
-hermetic generation.
+Handwritten ORM mappings compile through the language's normal Bazel targets.
+Integration tests must exercise those mappings against a database created from
+the declared Flyway migrations. Do not introduce generated clients or a separate
+schema introspection system where the selected ORM does not require them.
 
 ## Proposed Bazel rules and providers
 
@@ -434,7 +430,7 @@ executed through these targets, not a separate shell orchestration pipeline.
 
 | Stage | Work and deliverable | Exit gate |
 | --- | --- | --- |
-| 0. Pin and package | Select supported PostgreSQL and Flyway releases, verify edition/license and required capabilities, package all runtime dependencies, and build a minimal schema plus container fixture. Prove Prisma's external migration, introspection, and hermetic generation workflow. | Reproducible macOS arm64 and Linux amd64 execution; record arm64 Linux support. No paid service or account required for the selected basic workflow. Prisma can consume Flyway-managed SQL without owning migrations. |
+| 0. Pin and package | Select supported PostgreSQL and Flyway releases, verify edition/license and required capabilities, package all runtime dependencies, and build a minimal schema plus container fixture. Verify each ORM can use Flyway-managed tables without applying its own schema changes. | Reproducible macOS arm64 and Linux amd64 execution; record arm64 Linux support. No paid service or account required for the selected basic workflow. Every ORM can consume Flyway-managed SQL without owning migrations. |
 | 1. Prove migration safety | Implement history validation, concurrent-runner, interrupted-runner, transactional failure, and non-transactional recovery tests. Publish a recovery runbook. | All safety cases below pass. |
 | 2. Prove ORM access | Add ORM/driver dependencies and an integration example in each of the six languages, using the same Flyway fixture schema. Exercise models, relationships, transactions, and mapping validation. | All six ORMs pass value, relationship, transaction, and schema compatibility contracts. No ORM changes the schema during startup or test setup. |
 | 3. Measure deployment behavior | Run the benchmarks below and demonstrate expand/backfill/contract under service traffic. Publish raw reports and a decision record. | Correctness gates pass; performance budgets pass or receive an explicit evidence-based revision before adoption. |
