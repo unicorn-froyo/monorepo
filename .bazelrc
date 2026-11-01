@@ -16,4 +16,4 @@ build:agent --ui_event_filters=-debug
 build:agent --noverbose_failures
 build:agent --subcommands=false
 test:agent --test_output=summary
-test:agent --test_summary=short
+test:agent --test_summary=short_uncached
