@@ -8,7 +8,13 @@ load("//tools/package/ruby:index.bzl", "rb_package")
 
 rb_coverage_test(
     name = "get_widgets_example_rb_coverage_test",
-    srcs = [":get_widgets_test.rb"],
+    srcs = [
+        ":get_widgets_test.rb",
+        ":server_test.rb",
+    ],
+    data = ["config.ru"],
+    postgres = "//src/data/example/widgets:postgres",
+    sources = ["get_widgets.rb"],
     deps = [":get_widgets_example_rb_lib"],
 )
 
@@ -35,7 +41,10 @@ rb_typecheck_test(
         "*.ru",
     ]) + [
         "//src/apis/ruby:abstract_api_base.rb",
+        "//src/apis/ruby:database.rb",
         "//src/apis/ruby:security_headers.rb",
+        "//src/data/example/widgets/ruby:models.rb",
+        "//src/data/ruby/postgresql:config.rb",
     ],
 )
 
@@ -55,6 +64,7 @@ rb_library(
     srcs = [":get_widgets.rb"],
     deps = [
         "//src/apis/ruby:api_base_rb_lib",
+        "//src/data/example/widgets/ruby:lib",
         "@bundle",
     ],
 )
@@ -106,6 +116,8 @@ rb_image(
         ":gems_layer",
         "//third_party/ruby:gemfile_layer",
         "//src/apis/ruby:api_base_layer",
+        "//src/data/ruby/postgresql:layer",
+        "//src/data/example/widgets/ruby:layer",
         ":application_layer",
     ],
 )

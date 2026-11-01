@@ -1,7 +1,8 @@
 # PostgreSQL development and testing
 
 Python uses SQLAlchemy ORM with Psycopg 3; Go uses GORM with its pgx-backed
-PostgreSQL driver. TypeScript uses TypeORM Active Record models with node-postgres.
+PostgreSQL driver. TypeScript uses TypeORM Active Record models with node-postgres. Ruby uses
+Rails Active Record with pg.
 Flyway owns database migrations;
 application startup never creates tables. The example schema lives in
 [`example/widgets/migrations`](example/widgets/migrations), with mappings in
@@ -251,10 +252,54 @@ a PostgreSQL microsecond value leaves the stored microseconds intact. Use
 parameterized SQL for operations that must preserve sub-millisecond precision
 when writing timestamps.
 
+## Ruby Active Record
+
+Ruby uses schema-qualified Active Record models in
+[`example/widgets/ruby/models.rb`](example/widgets/ruby/models.rb), all inheriting
+from the shared abstract `Postgresql::Record`. Flyway owns the schema; Ruby never
+creates tables, runs migrations, or loads a schema at startup. Native Active Record
+attribute types preserve UUIDs, arbitrary precision integers, BigDecimal numeric
+values, binary strings, JSONB, nullable text, and microsecond timestamps.
+
+The API base installs a Rails initializer. Configure
+`config.x.postgresql.connection_file` or set `POSTGRES_CONNECTION_FILE` before
+initialization. Startup establishes a five-connection pool and verifies `SELECT 1`;
+invalid configuration or authentication fails startup. Connections have five-second
+connect/checkout timeouts and a ten-second statement timeout. Rails executor hooks
+release request connections and manage query caches. The initializer closes its
+owned pool at process exit, including normal Puma termination.
+
+For dependency injection, set `config.x.postgresql.record` to a caller-owned abstract
+Active Record class before initialization. The initializer leaves its configuration
+and ownership with the caller. Set `config.x.postgresql.widget_model` to the widget
+model inheriting from that base in the example. Models sharing a pool must inherit
+from the same abstract base, following [Rails connection sharing conventions](https://guides.rubyonrails.org/active_record_multiple_databases.html).
+This uses Rails application configuration rather than introducing a DI container.
+Run one configured application pool per process for the shared default models.
+
+`GET /widgets` returns persisted IDs, names, and owner names ordered by ID, using
+one joined query. It returns 503 when unconfigured and a sanitized 500 on query
+failure. `/readyz` checks the configured pool and returns 503 on database failure;
+an application without a configured database remains ready, matching Python.
+Transactions are explicit: use `Postgresql::Record.transaction` for related model
+and outbox writes. Revisions use conditional `where(id:, revision:).update_all`
+updates rather than Rails' implicit optimistic locking.
+
+```sh
+bazelisk test --config=agent //src/data/ruby/postgresql:coverage_test
+bazelisk test --config=agent //src/data/example/widgets/ruby:coverage_test
+bazelisk test --config=agent //src/apis/examples/ruby:get_widgets_example_rb_coverage_test
+```
+
+These use the same sandboxed PostgreSQL/Flyway fixture as the other languages.
+`rb_coverage_test(postgres = ..., sources = [...])` emits portable `lcov.info` and
+SimpleCov raw results before enforcing the shared 100% line coverage threshold.
+Sorbet checks the repository Ruby sources through `rb_typecheck_test`.
+
 ## Scope and remaining adoption work
 
 This implementation supplies shared migration packaging, static checks,
-coverage fixtures for Python, Go, and TypeScript, disposable development databases, recovery,
+coverage fixtures for Python, Go, TypeScript, and Ruby, disposable development databases, recovery,
 connection configuration, and ORM integration in the existing service examples.
 Repository-wide `bazelisk test //...` includes sandboxed database integration
 tests without requiring Docker. The integration suite above can also be run
