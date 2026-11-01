@@ -7,7 +7,7 @@
 - Dependency locks belong under `third_party/{ecosystem}/` for every language ecosystem that uses a lockfile. This includes Python, Go, Ruby, Rust, and npm-managed toolchains when applicable.
 - Keep ecosystem dependency manifests under `third_party/{ecosystem}/` alongside their lockfiles.
 - Edit `third_party/pypi/requirements.in`, then run `bazelisk run //third_party/pypi:requirements.update`.
-- Validate changes with `bazelisk build //...` and `bazelisk test //...`.
+- Do not run builds or tests solely for documentation, agent instructions, or output-verbosity configuration changes. For implementation changes, use focused targets while iterating, then run `bazelisk build --config=agent //...` and `bazelisk test --config=agent //...` once as the final gates.
 - Apply the repository's language-specific Bazel test and coverage rules uniformly, regardless of source location. Code and tests under `tools/` are not exempt from the same coverage standard as code under `src/`; extend the relevant rules when needed instead of bypassing them with lower-level test targets or location-based exclusions.
 - All Bazel rules, macros, and helper starlark files must live under `tools/`. No Bazel rule or macro may be added to application directories such as `src/`, `third_party/`, or repository root packages. Language-specific rules must follow the standard tool layout: `tools/{tool}/{language}`. For example, Python coverage rules belong in `tools/coverage/python`, Ruby lint rules in `tools/lint/ruby`, and so on. Do not scatter rule implementations across ad hoc directories or repository root packages.
 - Name every exported language-specific Bazel rule or macro with its established language prefix. Use the full language name for the `tools/{tool}/{language}` directory, but the prefix for the Starlark symbol:
@@ -48,3 +48,12 @@
 # APIs
 
 - Follow the cross-platform API standards in [`src/apis/STANDARDS.md`](src/apis/STANDARDS.md) for every supported API language and example.
+
+# Keep tool output out of the context window
+
+- Use `--config=agent` for Bazel build/test/run commands. This profile suppresses progress, DEBUG events, terminal formatting, full action commands, and automatic test-log dumps. It changes output only, not which targets execute or whether failures fail the command.
+- Redirect both stdout and stderr to a temporary log outside the repository. Return the exit status, a short result summary, and the log path. Do not stream full Bazel output into the conversation, even with the agent profile enabled: compiler and action output can still be large.
+- On failure, read only the relevant error excerpt or the failing target's `bazel-testlogs/<package>/<target>/test.log`, initially limited to 80 lines and 12 KB. Search first and limit very long lines; a line limit alone does not bound output. Read additional targeted excerpts only when needed to diagnose the failure.
+- Keep `--test_output=summary`. Do not use `--test_output=all`, `--test_output=streamed`, `--verbose_failures`, or `--subcommands` unless a specific failure requires it; direct any verbose diagnostic run to a log too.
+- Start with the relevant BUILD file and loaded Starlark helper. Search lockfiles for a specific dependency rather than reading them whole. Keep ordinary searches out of `bazel-*`, generated dependencies, and unrelated proposal documents. Use scoped queries instead of dumping `deps(//...)`.
+- Reuse a stable Bazel cache/output location. Do not rerun passing checks or poll unchanged output without a reason; report environmental blockers rather than retrying the same failure without new evidence.

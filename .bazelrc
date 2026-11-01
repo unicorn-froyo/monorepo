@@ -6,3 +6,14 @@ build --tool_java_runtime_version=remotejdk_21
 build --tool_java_language_version=21
 test --test_output=errors
 test --test_env=DOCKER_HOST
+
+# Opt-in output settings for coding agents: bazelisk test --config=agent <target>.
+build:agent --noshow_progress
+build:agent --noshow_loading_progress
+build:agent --color=no
+build:agent --curses=no
+build:agent --ui_event_filters=-debug
+build:agent --noverbose_failures
+build:agent --subcommands=false
+test:agent --test_output=summary
+test:agent --test_summary=short
