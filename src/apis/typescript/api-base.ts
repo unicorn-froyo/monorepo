@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import type { Type } from "@nestjs/common";
+import { Module, type Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import {
   ExpressAdapter,
@@ -7,12 +7,17 @@ import {
 } from "@nestjs/platform-express";
 import type { NextFunction, Request, Response } from "express";
 
+import { DatabaseModule, type DatabaseOptions } from "./database.js";
+
 /** Creates a portable Nest application with the shared HTTP response policy. */
 export async function createApi(
   rootModule: Type<unknown>,
+  database: DatabaseOptions = {},
 ): Promise<NestExpressApplication> {
+  @Module({ imports: [DatabaseModule.register(database), rootModule] })
+  class ApplicationModule {}
   const app = await NestFactory.create<NestExpressApplication>(
-    rootModule,
+    ApplicationModule,
     new ExpressAdapter(),
     { logger: false },
   );
@@ -29,6 +34,11 @@ export async function createApi(
     }
     next();
   });
-  await app.init();
+  try {
+    await app.init();
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
   return app;
 }

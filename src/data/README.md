@@ -1,7 +1,8 @@
 # PostgreSQL development and testing
 
 Python uses SQLAlchemy ORM with Psycopg 3; Go uses GORM with its pgx-backed
-PostgreSQL driver. Flyway owns database migrations;
+PostgreSQL driver. TypeScript uses TypeORM Active Record models with node-postgres.
+Flyway owns database migrations;
 application startup never creates tables. The example schema lives in
 [`example/widgets/migrations`](example/widgets/migrations), with mappings in
 [`example/widgets/python/models.py`](example/widgets/python/models.py).
@@ -189,10 +190,71 @@ A process test launches the Go server with `--port`, updates a row after startup
 and verifies that HTTP reads the updated PostgreSQL data. Each server is built and
 tested independently against the shared PostgreSQL schema and fixture.
 
+## TypeScript integration
+
+TypeScript uses TypeORM Active Record, with handwritten entity classes in
+[`example/widgets/typescript/models.ts`](example/widgets/typescript/models.ts).
+They extend `BaseEntity`, so queries and persistence use model methods such as
+`Widget.find(...)`, `Owner.create(...).save()`, and `Widget.update(...)`.
+There is no generated client, Prisma schema, ORM Bazel rule, or introspection
+engine. Flyway SQL remains the only source of schema migrations; TypeORM sets
+`synchronize: false` and `migrationsRun: false`.
+
+```sh
+bazelisk test //src/data/typescript/postgresql:coverage_test
+bazelisk test //src/data/example/widgets/typescript:coverage_test
+bazelisk test //src/apis/examples/typescript:get_widgets_example_ts_coverage_test
+```
+
+These suites use the same native PostgreSQL/Flyway fixture as Python and Go.
+`ts_coverage_test(postgres = "//src/data/example/widgets:postgres")` starts it
+before c8 runs. The suites check exact values, relationships, commit and rollback,
+conditional version updates, SQLSTATE errors, application-role permissions, and
+HTTP/database lifecycle behavior. Intended application sources meet the shared
+100% line threshold and emit portable `lcov.info`. Normal strict TypeScript
+builds enforce types; no additional compiler configuration is needed.
+
+`dataSourceFromFile()` reads the private `POSTGRES_CONNECTION_FILE` and builds
+an uninitialized TypeORM `DataSource` with a five-connection pool, five-second
+connection timeout, and ten-second statement timeout. Nest's shared
+`DatabaseModule` initializes the configured source on startup and closes owned
+pools on shutdown. TypeORM releases partially initialized pools on startup
+failure. Injected initialized sources remain caller-owned. `/readyz` executes
+`SELECT 1` and returns `503 {"ready": false}` if the configured source is unavailable.
+
+TypeORM Active Record binds each entity class to a data source during
+initialization. Run one application data source for these models in a service
+process. Queries and instance `save()` methods use that connection. For
+multi-record transactions, use `source.transaction(async manager => ...)` and
+perform **all writes through that manager**. Ordinary model-level `save()` calls
+do not automatically join the callback's transaction. The integration test
+commits and rolls back owner/widget/outbox records together using this API.
+
+`GET /widgets` calls `Widget.find()` with a joined owner relation and ID ordering.
+It returns persisted widget IDs, names, and owner names, `503` without configuration,
+and a sanitized `500` on query failure. Tests verify 101 widgets and their owners
+load in one SQL query. `index.ts` handles command-line arguments; `server.ts`
+owns startup, listener-failure cleanup, and Nest shutdown hooks. A process test
+verifies live PostgreSQL updates and SIGTERM shutdown without coverage exclusions.
+
+After starting `//src/data/example/widgets:dev`, export its printed private
+`POSTGRES_CONNECTION_FILE` and run:
+
+```sh
+bazelisk run //src/apis/examples/typescript:server -- --port 8080
+```
+
+Bigint revisions and numeric amounts use exact decimal strings, bytea uses
+`Buffer`, UUIDs use strings, and JSONB uses typed objects. Timestamps use JavaScript
+`Date`, intentionally limiting mapped values to milliseconds. Tests verify reading
+a PostgreSQL microsecond value leaves the stored microseconds intact. Use
+parameterized SQL for operations that must preserve sub-millisecond precision
+when writing timestamps.
+
 ## Scope and remaining adoption work
 
 This implementation supplies shared migration packaging, static checks,
-coverage fixtures for Python and Go, disposable development databases, recovery,
+coverage fixtures for Python, Go, and TypeScript, disposable development databases, recovery,
 connection configuration, and ORM integration in the existing service examples.
 Repository-wide `bazelisk test //...` includes sandboxed database integration
 tests without requiring Docker. The integration suite above can also be run

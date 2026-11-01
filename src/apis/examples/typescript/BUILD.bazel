@@ -1,3 +1,4 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_info_files")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("//tools/coverage/typescript:index.bzl", "ts_coverage_test")
@@ -21,38 +22,9 @@ ts_format_bin(
     srcs = glob(["*.ts"]),
 )
 
-ts_coverage_test(
-    name = "get_widgets_example_ts_coverage_test",
-    srcs = [
-        "get-widgets.ts",
-        "server.ts",
-        "//src/apis/typescript:api_base_ts_srcs",
-    ],
-    data = [
-        ":get_widgets_example_ts_lib",
-        ":get_widgets_example_ts_test_lib",
-        ":server_lib",
-        "//src/apis/typescript:api_base_ts_lib",
-        "//third_party/npm:node_modules",
-        "//third_party/npm:node_modules/@nestjs/common",
-        "//third_party/npm:node_modules/@nestjs/core",
-        "//third_party/npm:node_modules/@nestjs/platform-express",
-        "//third_party/npm:node_modules/reflect-metadata",
-        "//third_party/npm:node_modules/rxjs",
-        "//third_party/npm:node_modules/supertest",
-    ],
-    entry_point = "src/apis/examples/typescript/get-widgets.test.js",
-)
-
 bzl_lint_test(
     name = "get_widgets_example_bzl_lint_test",
-    data = glob(
-        [
-            "*.bazel",
-            "*.bzl",
-        ],
-        allow_empty = True,
-    ),
+    data = ["BUILD.bazel"],
 )
 
 ts_project(
@@ -64,13 +36,17 @@ ts_project(
     tsconfig = "//tools/toolchains/typescript:tsconfig",
     deps = [
         "//src/apis/typescript:api_base_ts_lib",
+        "//src/data/example/widgets/typescript:lib",
         "//third_party/npm:node_modules/@nestjs/common",
     ],
 )
 
 ts_project(
     name = "server_lib",
-    srcs = ["server.ts"],
+    srcs = [
+        "index.ts",
+        "server.ts",
+    ],
     declaration = True,
     source_map = True,
     transpiler = "tsc",
@@ -78,9 +54,17 @@ ts_project(
     deps = [
         ":get_widgets_example_ts_lib",
         "//src/apis/typescript:api_base_ts_lib",
+        "//src/data/example/widgets/typescript:lib",
         "//third_party/npm:node_modules/@nestjs/platform-express",
         "//third_party/npm:node_modules/@types/node",
     ],
+)
+
+js_binary(
+    name = "server",
+    data = [":server_lib"],
+    entry_point = "index.js",
+    env = {"NODE_PATH": "third_party/npm/node_modules"},
 )
 
 ts_project(
@@ -94,32 +78,55 @@ ts_project(
         ":get_widgets_example_ts_lib",
         ":server_lib",
         "//src/apis/typescript:api_base_ts_lib",
+        "//src/data/example/widgets/typescript:lib",
+        "//src/data/typescript/postgresql:lib",
         "//third_party/npm:node_modules/@nestjs/platform-express",
         "//third_party/npm:node_modules/@types/node",
         "//third_party/npm:node_modules/@types/supertest",
         "//third_party/npm:node_modules/supertest",
+        "//third_party/npm:node_modules/typeorm",
     ],
+)
+
+ts_coverage_test(
+    name = "get_widgets_example_ts_coverage_test",
+    size = "large",
+    timeout = "long",
+    srcs = [
+        "get-widgets.ts",
+        "index.ts",
+        "server.ts",
+        "//src/apis/typescript:api_base_ts_srcs",
+    ],
+    data = [
+        ":get_widgets_example_ts_lib",
+        ":get_widgets_example_ts_test_lib",
+        ":server_lib",
+    ],
+    entry_point = "src/apis/examples/typescript/get-widgets.test.js",
+    postgres = "//src/data/example/widgets:postgres",
+)
+
+js_info_files(
+    name = "runtime_files",
+    srcs = [":server_lib"],
 )
 
 pkg_tar(
     name = "application_layer",
-    srcs = [
-        ":get_widgets_example_ts_lib",
-        ":server_lib",
-        "//src/apis/typescript:api_base_ts_lib",
-    ],
-    include_runfiles = True,
+    srcs = [":runtime_files"],
     package_dir = "/app",
+    strip_prefix = "/",
 )
 
 ts_image(
     name = "get_widgets_example_oci",
     entrypoint = [
         "node",
-        "/app/server.js.runfiles/_main/src/apis/examples/typescript/server.js",
+        "/app/src/apis/examples/typescript/index.js",
     ],
     env = {
-        "NODE_PATH": "/app/server.js.runfiles/_main/third_party/npm/node_modules",
+        "NODE_PATH": "/app/third_party/npm/node_modules",
     },
     load_name = "get_widgets_example_image",
     repo_tags = ["get-widgets-typescript:latest"],
