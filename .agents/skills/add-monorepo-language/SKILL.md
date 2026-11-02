@@ -16,7 +16,9 @@ new ecosystem's standard Bazel rules and tools.
 1. Inventory the comparator language's module/toolchain setup, third-party
    package, API library, tests, example service, coverage, and OCI targets.
 2. Add a pinned Bazel ruleset and hermetic toolchain.
-3. Implement the language rules and coverage contract in `AGENTS.md`. Use the
+3. Register the language directory and prefix in the root `AGENTS.md`. Implement
+   tooling and coverage following `tools/AGENTS.md` and
+   `tools/coverage/AGENTS.md`. Use the
    comparator's rule tests as a starting point for the new integration.
 4. Add the API implementation and example service required by
    `src/apis/STANDARDS.md`.
@@ -25,3 +27,8 @@ new ecosystem's standard Bazel rules and tools.
 
 Run focused positive and negative tests for each new rule, then run
 the repository-wide Bazel build and test gates in `AGENTS.md`.
+
+Explicitly build new OCI targets and verify the example service and image
+architecture on each supported native Linux platform when native dependencies
+prevent cross-compilation. Container startup must not compile code, install
+packages, or access registries.
