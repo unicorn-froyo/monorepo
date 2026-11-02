@@ -296,9 +296,12 @@ These use the same sandboxed PostgreSQL/Flyway fixture as the other languages.
 SimpleCov raw results before enforcing the shared 100% line coverage threshold.
 Sorbet checks Ruby sources through `rb_typecheck_test`, loading generated gem
 interfaces from `third_party/ruby/rbi/gems` and model interfaces from
-`example/widgets/ruby/rbi`. The model RBIs describe column types, aliases,
-associations, and model-specific relations. Association readers remain nullable,
-as Tapioca models unsaved or missing associated records even with required
+`example/widgets/ruby/rbi`. Every `rb_typecheck_test` also includes the shared RBI
+freshness check. Bazel caches that check once across typecheck targets, so an
+ordinary typecheck fails when generated interfaces are stale. The model RBIs
+describe column types, aliases, associations, and model-specific relations.
+Association readers remain nullable, as Tapioca models unsaved or missing
+associated records even with required
 foreign keys. JSONB values remain dynamically typed; these interfaces do not
 validate a JSON document's shape.
 
@@ -306,7 +309,7 @@ Regenerate after changing models, migrations, dependencies, or typing tools:
 
 ```sh
 bazelisk run --config=agent //tools/lint/ruby:rbi_update
-bazelisk test --config=agent //tools/lint/ruby:rbi_freshness_test //tools/lint/ruby:model_types_test
+bazelisk test --config=agent //src/data/example/widgets/ruby:rb_typecheck_test
 ```
 
 The update and freshness targets boot the real Rails example against the shared

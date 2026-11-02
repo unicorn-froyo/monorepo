@@ -63,6 +63,7 @@ rb_coverage_test(
         "rbi_requires.rb",
         "rbi_models.rb",
     ],
+    visibility = ["//visibility:public"],
     deps = [":rbi_lib"],
 )
 
