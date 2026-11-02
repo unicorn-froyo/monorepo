@@ -1,4 +1,5 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/lint/ruby:rbi.bzl", "rb_gem_rbis")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,10 +18,10 @@ exports_files([
     "Gemfile.lock",
 ])
 
-filegroup(
+rb_gem_rbis(
     name = "rbi",
-    srcs = glob(
-        ["rbi/gems/*.rbi"],
-        allow_empty = True,
-    ),
+    srcs = [
+        "Gemfile",
+        "Gemfile.lock",
+    ],
 )

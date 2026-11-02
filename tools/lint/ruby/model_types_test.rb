@@ -6,7 +6,7 @@ require "sorbet-runtime"
 require "tmpdir"
 
 root = File.join(ENV.fetch("TEST_SRCDIR"), ENV.fetch("TEST_WORKSPACE"))
-interfaces = Dir.glob("third_party/ruby/rbi/gems/*.rbi", base: root) + ["src/data/example/widgets/ruby/models.rbi"]
+interfaces = [ENV.fetch("GEM_RBI_DIR")] + ["src/data/example/widgets/ruby/models.rbi"]
 sources = %w[tools/lint/ruby/external.rbi src/data/ruby/postgresql/config.rb
              src/data/example/widgets/ruby/models.rb]
 command = [RbConfig.ruby, Gem.bin_path("sorbet", "srb"), "tc", "--no-config", "--typed=true", *interfaces, *sources]

@@ -294,19 +294,24 @@ bazelisk test --config=agent //src/apis/examples/ruby:get_widgets_example_rb_cov
 These use the same sandboxed PostgreSQL/Flyway fixture as the other languages.
 `rb_coverage_test(postgres = ..., sources = [...])` emits portable `lcov.info` and
 SimpleCov raw results before enforcing the shared 100% line coverage threshold.
-Sorbet checks Ruby sources through `rb_typecheck_test`, loading generated gem
-interfaces from `third_party/ruby/rbi/gems` and model interfaces from
-`example/widgets/ruby/models.rbi`, alongside `models.rb`. Every
-`rb_typecheck_test` also includes the shared RBI
-freshness check. Bazel caches that check once across typecheck targets, so an
-ordinary typecheck fails when generated interfaces are stale. The model RBIs
+Sorbet checks Ruby sources through `rb_typecheck_test`. Dependency interfaces
+are generated as the cached build output `//third_party/ruby:rbi`; no dependency
+RBI files are checked into the repository. Bazel keys generation on the locked
+bundle and generator inputs and supplies the generated directory directly to
+Sorbet. It does not start PostgreSQL to generate dependency interfaces.
+
+The checked-in model interface is `example/widgets/ruby/models.rbi`, alongside
+`models.rb`. Every `rb_typecheck_test` also includes its shared freshness check.
+Bazel caches that check once across typecheck targets, so an ordinary typecheck
+fails when the checked-in model interface is stale. The model RBIs
 describe column types, aliases, associations, and model-specific relations.
 Association readers remain nullable, as Tapioca models unsaved or missing
 associated records even with required
 foreign keys. JSONB values remain dynamically typed; these interfaces do not
 validate a JSON document's shape.
 
-Regenerate after changing models, migrations, dependencies, or typing tools:
+Regenerate the model companion after changing models, migrations, dependencies,
+or typing tools:
 
 ```sh
 bazelisk run --config=agent //tools/lint/ruby:rbi_update
@@ -315,10 +320,12 @@ bazelisk test --config=agent //src/data/example/widgets/ruby:rb_typecheck_test
 
 The update and freshness targets boot the real Rails example against the shared
 Flyway-migrated PostgreSQL fixture. The freshness test regenerates and compares
-file contents, detecting changed, missing, and stale interfaces. It preserves
+the model file contents, detecting changed, missing, and stale interfaces. It preserves
 the generated files and Tapioca logs as test artifacts. Static regression tests
 check concrete scalar/association/relationship types and reject incorrect field
-and association assignments. No handwritten Active Record API stubs are used.
+and association assignments. Generator tests also compare the dependency RBI
+build output with a fresh generation. No handwritten Active Record API stubs are
+used.
 
 Tapioca is pinned and all generated RBIs use `typed: true`. Sorbet supplies the
 standard-library interfaces. Generation removes only Active Support's declarations

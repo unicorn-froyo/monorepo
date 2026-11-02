@@ -5,7 +5,7 @@ load("@rules_ruby//ruby:defs.bzl", "rb_binary", "rb_test")
 load("//tools/coverage:config.bzl", "MINIMUM_LINE_COVERAGE")
 load("//tools/testing/postgresql:providers.bzl", "PostgresqlFixtureInfo")
 
-def rb_coverage_test(name, srcs, deps = [], data = [], postgres = None, sources = [], visibility = None):
+def rb_coverage_test(name, srcs, deps = [], data = [], postgres = None, sources = [], visibility = None, env = {}):
     """Run Ruby test scripts and preserve a validated portable LCOV report."""
     if not sources:
         fail("rb_coverage_test requires intended application sources")
@@ -25,10 +25,11 @@ def rb_coverage_test(name, srcs, deps = [], data = [], postgres = None, sources 
         args = ["$(location %s)" % src for src in srcs],
         data = data,
         deps = deps + ["@bundle"],
-        env = {
-            "MINIMUM_LINE_COVERAGE": str(MINIMUM_LINE_COVERAGE),
-            "RUBY_COVERAGE_SOURCES": ":".join(["$(location %s)" % source for source in sources]),
-        },
+        env = dict(
+            env,
+            MINIMUM_LINE_COVERAGE = str(MINIMUM_LINE_COVERAGE),
+            RUBY_COVERAGE_SOURCES = ":".join(["$(location %s)" % source for source in sources]),
+        ),
     )
 
     if postgres:

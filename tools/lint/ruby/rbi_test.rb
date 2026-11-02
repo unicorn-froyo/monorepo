@@ -7,7 +7,7 @@ require_relative "rbi_requires"
 require_relative "rbi_models"
 
 class RubyRbiTest < Minitest::Test
-  def test_generated_files_match_the_migrated_schema_and_locked_gems
+  def test_model_interface_matches_the_migrated_schema
     arguments = ARGV.dup
     ARGV.replace(["--check"])
     load File.join(__dir__, "rbi_cli.rb")
@@ -15,11 +15,27 @@ class RubyRbiTest < Minitest::Test
     ARGV.replace(arguments)
   end
 
+  def test_dependency_interfaces_match_the_bazel_build_output
+    arguments = ARGV.dup
+    Dir.mktmpdir do |directory|
+      ARGV.replace([directory])
+      load File.join(__dir__, "gem_rbi_cli.rb")
+      assert_same_interfaces(RubyRbi.snapshot(ENV.fetch("GEM_RBI_DIR")), RubyRbi.snapshot(directory))
+    end
+  ensure
+    ARGV.replace(arguments)
+  end
+
+  def assert_same_interfaces(expected, actual)
+    changed = (expected.keys | actual.keys).reject { |path| expected[path] == actual[path] }
+    assert_equal [], changed
+  end
+
   def test_core_extension_compatibility_fails_if_upstream_changes
     Dir.mktmpdir do |directory|
       path = File.join(directory, "empty.rbi")
       File.write(path, "# typed: true\n")
-      assert_raises(RuntimeError) { RubyRbi.retain_core_signatures(path) }
+      assert_raises(RuntimeError) { GemRbi.retain_core_signatures(path) }
     end
   end
 
@@ -27,7 +43,7 @@ class RubyRbiTest < Minitest::Test
     Dir.mktmpdir do |directory|
       specification = File.join(directory, "tapioca.gemspec")
       File.write(specification, "")
-      assert_raises(RuntimeError) { RubyRbi.canonical_bundle_root(File.join(directory, "unrelated"), specification) }
+      assert_raises(RuntimeError) { GemRbi.canonical_bundle_root(File.join(directory, "unrelated"), specification) }
     end
   end
 
@@ -46,7 +62,7 @@ class RubyRbiTest < Minitest::Test
   def test_generation_failure_is_reported
     Dir.mktmpdir do |directory|
       assert_raises(RuntimeError) do
-        RubyRbi.run_command([RbConfig.ruby, "-e", "abort 'intentional generation failure'"], directory, "failure")
+        GemRbi.run_command([RbConfig.ruby, "-e", "abort 'intentional generation failure'"], directory, "failure")
       end
     end
   end
