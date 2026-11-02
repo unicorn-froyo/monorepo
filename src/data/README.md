@@ -296,7 +296,8 @@ These use the same sandboxed PostgreSQL/Flyway fixture as the other languages.
 SimpleCov raw results before enforcing the shared 100% line coverage threshold.
 Sorbet checks Ruby sources through `rb_typecheck_test`, loading generated gem
 interfaces from `third_party/ruby/rbi/gems` and model interfaces from
-`example/widgets/ruby/rbi`. Every `rb_typecheck_test` also includes the shared RBI
+`example/widgets/ruby/models.rbi`, alongside `models.rb`. Every
+`rb_typecheck_test` also includes the shared RBI
 freshness check. Bazel caches that check once across typecheck targets, so an
 ordinary typecheck fails when generated interfaces are stale. The model RBIs
 describe column types, aliases, associations, and model-specific relations.

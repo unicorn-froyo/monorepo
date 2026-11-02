@@ -58,8 +58,5 @@ bzl_lint_test(
 
 filegroup(
     name = "rbi",
-    srcs = glob(
-        ["rbi/**/*.rbi"],
-        allow_empty = True,
-    ),
+    srcs = ["models.rbi"],
 )
