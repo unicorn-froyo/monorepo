@@ -18,7 +18,7 @@ rb_format_test(
 
 rb_typecheck_test(
     name = "api_base_rb_typecheck_test",
-    srcs = glob(["*.rb"]),
+    srcs = glob(["*.rb"]) + ["//src/data/ruby/postgresql:config.rb"],
 )
 
 rb_format_bin(
@@ -29,6 +29,12 @@ rb_format_bin(
 rb_coverage_test(
     name = "api_base_rb_coverage_test",
     srcs = [":abstract_api_base_test.rb"],
+    postgres = "//src/data/example/widgets:postgres",
+    sources = [
+        "abstract_api_base.rb",
+        "database.rb",
+        "security_headers.rb",
+    ],
     deps = [":api_base_rb_lib"],
 )
 
@@ -47,6 +53,7 @@ pkg_tar(
     name = "api_base_layer",
     srcs = [
         "abstract_api_base.rb",
+        "database.rb",
         "security_headers.rb",
     ],
     package_dir = "/app/src/apis/ruby",
@@ -57,9 +64,13 @@ rb_library(
     name = "api_base_rb_lib",
     srcs = [
         ":abstract_api_base.rb",
+        ":database.rb",
         ":security_headers.rb",
     ],
-    deps = ["@bundle"],
+    deps = [
+        "//src/data/ruby/postgresql:lib",
+        "@bundle",
+    ],
 )
 
 rb_test(

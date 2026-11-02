@@ -26,13 +26,6 @@ module Rack
   end
 end
 
-module Minitest
-  class Test
-    def assert_equal(expected, actual); end
-    def assert_raises(exception, &block); end
-  end
-end
-
 module SimpleCov
   module Formatter
     class LcovFormatter
@@ -54,5 +47,10 @@ class Object
   def minimum_coverage(line:); end
   def root(path); end
   def coverage_dir(path); end
-  def add_filter(path); end
+  def add_filter(path = nil, &block); end
+  def track_files(pattern); end
+end
+
+module Rails
+  def self.application; end
 end

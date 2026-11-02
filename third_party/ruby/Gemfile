@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+gem "pg", "~> 1.6"
 gem "puma", "~> 7.2"
 gem "rails", "~> 8.1.2"
 
@@ -8,4 +9,5 @@ group :test do
   gem "simplecov", "~> 0.22"
   gem "simplecov-lcov", "~> 0.8"
   gem "sorbet", "~> 0.6"
+  gem "tapioca", "0.20.0", require: false
 end

@@ -1,4 +1,8 @@
+load("@rules_ruby//ruby:defs.bzl", "rb_binary", "rb_library", "rb_test")
+load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
+load(":index.bzl", "rb_format_test", "rb_lint_test", "rb_typecheck_test")
+load(":rbi.bzl", "rb_rbi_update")
 
 exports_files([
     ".rubocop.yml",
@@ -17,4 +21,113 @@ bzl_lint_test(
         "*.bazel",
         "*.bzl",
     ]),
+)
+
+rb_library(
+    name = "gem_rbi_lib",
+    srcs = [
+        "gem_rbi.rb",
+        "rbi_requires.rb",
+    ],
+    deps = ["@bundle"],
+)
+
+rb_binary(
+    name = "gem_rbi_generator",
+    srcs = ["gem_rbi_cli.rb"],
+    main = "gem_rbi_cli.rb",
+    visibility = ["//third_party/ruby:__pkg__"],
+    deps = [":gem_rbi_lib"],
+)
+
+rb_library(
+    name = "rbi_lib",
+    srcs = [
+        "rbi_generator.rb",
+        "rbi_models.rb",
+    ],
+    deps = [
+        ":gem_rbi_lib",
+        "//src/apis/examples/ruby:get_widgets_example_rb_lib",
+        "@bundle",
+    ],
+)
+
+rb_binary(
+    name = "rbi_generator",
+    srcs = ["rbi_cli.rb"],
+    main = "rbi_cli.rb",
+    deps = [":rbi_lib"],
+)
+
+rb_rbi_update(
+    name = "rbi_update",
+    generator = ":rbi_generator",
+    postgres = "//src/data/example/widgets:postgres",
+)
+
+rb_coverage_test(
+    name = "rbi_freshness_test",
+    srcs = ["rbi_test.rb"],
+    data = [
+        "//src/data/example/widgets/ruby:rbi",
+        "//third_party/ruby:rbi",
+    ],
+    env = {"GEM_RBI_DIR": "$(rootpath //third_party/ruby:rbi)"},
+    postgres = "//src/data/example/widgets:postgres",
+    sources = [
+        "rbi_generator.rb",
+        "gem_rbi.rb",
+        "gem_rbi_cli.rb",
+        "rbi_cli.rb",
+        "rbi_requires.rb",
+        "rbi_models.rb",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":rbi_lib"],
+)
+
+rb_format_test(
+    name = "rb_format_test",
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]),
+)
+
+rb_lint_test(
+    name = "rb_lint_test",
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]),
+)
+
+rb_typecheck_test(
+    name = "rb_typecheck_test",
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]) + [
+        "//src/data/example/widgets/ruby:models.rb",
+        "//src/data/ruby/postgresql:config.rb",
+    ],
+    rbis = ["//src/data/example/widgets/ruby:rbi"],
+)
+
+rb_test(
+    name = "model_types_test",
+    srcs = ["model_types_test.rb"],
+    data = [
+        "external.rbi",
+        "testdata/model_types.rb",
+        "//src/data/example/widgets/ruby:rbi",
+        "//third_party/ruby:rbi",
+    ],
+    env = {"GEM_RBI_DIR": "$(rootpath //third_party/ruby:rbi)"},
+    main = "model_types_test.rb",
+    deps = [
+        "//src/data/example/widgets/ruby:lib",
+        "@bundle",
+    ],
 )

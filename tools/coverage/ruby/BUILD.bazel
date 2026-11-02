@@ -1,4 +1,5 @@
-load("@rules_ruby//ruby:defs.bzl", "rb_test")
+load("@rules_ruby//ruby:defs.bzl", "rb_binary")
+load("//tools/coverage/ruby:index.bzl", "rb_coverage_test")
 load("//tools/lint/bazel:index.bzl", "bzl_lint_test")
 load("//tools/lint/ruby:index.bzl", "rb_format_test", "rb_lint_test", "rb_typecheck_test")
 
@@ -9,27 +10,36 @@ exports_files([
 
 rb_lint_test(
     name = "ruby_coverage_rb_lint_test",
-    srcs = glob(["*.rb"]),
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]),
 )
 
 rb_format_test(
     name = "ruby_coverage_rb_format_test",
-    srcs = glob(["*.rb"]),
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]),
 )
 
 rb_typecheck_test(
     name = "ruby_coverage_rb_typecheck_test",
-    srcs = glob(["*.rb"]),
+    srcs = glob([
+        "*.rb",
+        "testdata/*.rb",
+    ]),
 )
 
-rb_test(
+rb_coverage_test(
     name = "ruby_coverage_lcov_test",
     srcs = [
-        "lcov.rb",
+        "artifacts_test.rb",
         "lcov_test.rb",
     ],
-    main = "lcov_test.rb",
-    deps = ["@bundle"],
+    data = [":artifacts_runner"],
+    sources = ["lcov.rb"],
 )
 
 bzl_lint_test(
@@ -38,4 +48,14 @@ bzl_lint_test(
         "*.bazel",
         "*.bzl",
     ]),
+)
+
+rb_binary(
+    name = "artifacts_runner",
+    srcs = [
+        "coverage_bin.rb",
+        "lcov.rb",
+    ] + glob(["testdata/*.rb"]),
+    main = "coverage_bin.rb",
+    deps = ["@bundle"],
 )

@@ -35,12 +35,16 @@ test_suite(
     tests = [
         "//src/apis/examples/go:get_widgets_example_go_coverage_test",
         "//src/apis/examples/python:get_widgets_example_py_coverage_test",
+        "//src/apis/examples/ruby:get_widgets_example_rb_coverage_test",
         "//src/apis/examples/typescript:get_widgets_example_ts_coverage_test",
         "//src/data/example/widgets/go:coverage_test",
         "//src/data/example/widgets/python:models_integration_test",
+        "//src/data/example/widgets/ruby:coverage_test",
         "//src/data/example/widgets/typescript:coverage_test",
         "//src/data/go/postgresql:coverage_test",
+        "//src/data/ruby/postgresql:coverage_test",
         "//src/data/typescript/postgresql:coverage_test",
+        "//tools/lint/ruby:rbi_freshness_test",
         "//tools/testing/python:lifecycle_integration_test",
     ],
 )

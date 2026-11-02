@@ -28,15 +28,23 @@ def rb_format_test(name, srcs):
         deps = ["@bundle"],
     )
 
-def rb_typecheck_test(name, srcs):
-    """Type-check Ruby sources with the locked Sorbet bundle."""
-    sources = srcs + ["//tools/lint/ruby:external.rbi"]
+def rb_typecheck_test(name, srcs, rbis = []):
+    """Check Ruby types and the freshness of their generated interfaces."""
+    sources = srcs + rbis + ["//third_party/ruby:rbi", "//tools/lint/ruby:external.rbi"]
     rb_test(
-        name = name,
+        name = name + "_sorbet",
+        visibility = ["//visibility:private"],
         main = "@bundle//bin:srb",
-        args = ["tc", "--no-config", "--typed=true"] + ["$(location %s)" % src for src in sources],
+        args = ["tc", "--no-config", "--typed=true"] + ["$(locations %s)" % src for src in sources],
         data = sources,
         deps = ["@bundle"],
+    )
+    native.test_suite(
+        name = name,
+        tests = [
+            ":" + name + "_sorbet",
+            "//tools/lint/ruby:rbi_freshness_test",
+        ],
     )
 
 def _rb_format_bin(ctx):
