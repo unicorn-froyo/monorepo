@@ -294,7 +294,35 @@ bazelisk test --config=agent //src/apis/examples/ruby:get_widgets_example_rb_cov
 These use the same sandboxed PostgreSQL/Flyway fixture as the other languages.
 `rb_coverage_test(postgres = ..., sources = [...])` emits portable `lcov.info` and
 SimpleCov raw results before enforcing the shared 100% line coverage threshold.
-Sorbet checks the repository Ruby sources through `rb_typecheck_test`.
+Sorbet checks Ruby sources through `rb_typecheck_test`, loading generated gem
+interfaces from `third_party/ruby/rbi/gems` and model interfaces from
+`example/widgets/ruby/rbi`. The model RBIs describe column types, aliases,
+associations, and model-specific relations. Association readers remain nullable,
+as Tapioca models unsaved or missing associated records even with required
+foreign keys. JSONB values remain dynamically typed; these interfaces do not
+validate a JSON document's shape.
+
+Regenerate after changing models, migrations, dependencies, or typing tools:
+
+```sh
+bazelisk run --config=agent //tools/lint/ruby:rbi_update
+bazelisk test --config=agent //tools/lint/ruby:rbi_freshness_test //tools/lint/ruby:model_types_test
+```
+
+The update and freshness targets boot the real Rails example against the shared
+Flyway-migrated PostgreSQL fixture. The freshness test regenerates and compares
+file contents, detecting changed, missing, and stale interfaces. It preserves
+the generated files and Tapioca logs as test artifacts. Static regression tests
+check concrete scalar/association/relationship types and reject incorrect field
+and association assignments. No handwritten Active Record API stubs are used.
+
+Tapioca is pinned and all generated RBIs use `typed: true`. Sorbet supplies the
+standard-library interfaces. Generation removes only Active Support's declarations
+of `Date#to_time`, `Exception#as_json`, and `Time.at`, which conflict with Sorbet's
+embedded signatures; their core signatures remain in effect. It fails if those
+expected upstream definitions disappear. Recheck this compatibility handling when
+upgrading Rails or Sorbet. Tools under `tools/lint/ruby` have the same line coverage
+threshold and report requirements as application code.
 
 ## Scope and remaining adoption work
 

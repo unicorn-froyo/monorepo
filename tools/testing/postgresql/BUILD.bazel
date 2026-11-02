@@ -44,6 +44,7 @@ test_suite(
         "//src/data/go/postgresql:coverage_test",
         "//src/data/ruby/postgresql:coverage_test",
         "//src/data/typescript/postgresql:coverage_test",
+        "//tools/lint/ruby:rbi_freshness_test",
         "//tools/testing/python:lifecycle_integration_test",
     ],
 )

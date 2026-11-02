@@ -28,13 +28,13 @@ def rb_format_test(name, srcs):
         deps = ["@bundle"],
     )
 
-def rb_typecheck_test(name, srcs):
+def rb_typecheck_test(name, srcs, rbis = []):
     """Type-check Ruby sources with the locked Sorbet bundle."""
-    sources = srcs + ["//tools/lint/ruby:external.rbi"]
+    sources = srcs + rbis + ["//third_party/ruby:rbi", "//tools/lint/ruby:external.rbi"]
     rb_test(
         name = name,
         main = "@bundle//bin:srb",
-        args = ["tc", "--no-config", "--typed=true"] + ["$(location %s)" % src for src in sources],
+        args = ["tc", "--no-config", "--typed=true"] + ["$(locations %s)" % src for src in sources],
         data = sources,
         deps = ["@bundle"],
     )

@@ -33,6 +33,7 @@ rb_lint_test(
 rb_typecheck_test(
     name = "rb_typecheck_test",
     srcs = glob(["*.rb"]) + ["//src/data/ruby/postgresql:config.rb"],
+    rbis = ["//src/data/example/widgets/ruby:rbi"],
 )
 
 rb_coverage_test(
@@ -53,4 +54,12 @@ pkg_tar(
 bzl_lint_test(
     name = "bzl_lint_test",
     data = ["BUILD.bazel"],
+)
+
+filegroup(
+    name = "rbi",
+    srcs = glob(
+        ["rbi/**/*.rbi"],
+        allow_empty = True,
+    ),
 )

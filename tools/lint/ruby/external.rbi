@@ -26,13 +26,6 @@ module Rack
   end
 end
 
-module Minitest
-  class Test
-    def assert_equal(expected, actual); end
-    def assert_raises(exception, &block); end
-  end
-end
-
 module SimpleCov
   module Formatter
     class LcovFormatter
@@ -56,51 +49,6 @@ class Object
   def coverage_dir(path); end
   def add_filter(path = nil, &block); end
   def track_files(pattern); end
-end
-
-module ActiveRecord
-  class ActiveRecordError < StandardError; end
-  class StatementInvalid < ActiveRecordError; end
-  class ConnectionNotEstablished < ActiveRecordError; end
-  class Rollback < ActiveRecordError; end
-
-  class Base
-    def self.abstract_class=(value); end
-    def self.table_name=(value); end
-    def self.lock_optimistically=(value); end
-    def self.alias_attribute(name, column); end
-    def self.has_many(name, **options); end
-    def self.belongs_to(name, **options); end
-    def self.establish_connection(config); end
-    def self.remove_connection; end
-    def self.connection_pool; end
-    def self.connected?; end
-    def self.create!(**attributes); end
-    def self.transaction(&block); end
-    def self.where(**conditions); end
-    def self.count; end
-    def self.one?; end
-    def self.first; end
-    def self.eager_load(*associations); end
-  end
-
-  module QueryCache
-    def self.install_executor_hooks(executor); end
-  end
-
-  module ConnectionAdapters
-    class ConnectionPool
-      def self.install_executor_hooks(executor); end
-    end
-  end
-end
-
-module ActiveSupport
-  class Logger < ::Logger; end
-  module Notifications
-    def self.subscribe(name, &block); end
-    def self.unsubscribe(subscriber); end
-  end
 end
 
 module Rails

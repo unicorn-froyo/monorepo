@@ -46,6 +46,7 @@ rb_typecheck_test(
         "//src/data/example/widgets/ruby:models.rb",
         "//src/data/ruby/postgresql:config.rb",
     ],
+    rbis = ["//src/data/example/widgets/ruby:rbi"],
 )
 
 bzl_lint_test(
@@ -62,6 +63,7 @@ bzl_lint_test(
 rb_library(
     name = "get_widgets_example_rb_lib",
     srcs = [":get_widgets.rb"],
+    visibility = ["//tools/lint/ruby:__pkg__"],
     deps = [
         "//src/apis/ruby:api_base_rb_lib",
         "//src/data/example/widgets/ruby:lib",

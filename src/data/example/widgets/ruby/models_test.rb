@@ -16,7 +16,10 @@ widget = Widgets::Widget.create!(
   details: { "nested" => [1, true] }, created_at: created, optional_text: nil
 )
 widget.reload
-raise "Relationship failed" unless widget.owner.id == owner_id && widget.owner.widgets.first.id == widget_id
+loaded_owner = widget.owner
+unless loaded_owner && loaded_owner.id == owner_id && loaded_owner.widgets.first!.id == widget_id
+  raise "Relationship failed"
+end
 raise "Precision lost" unless widget.version == 9_007_199_254_740_993
 raise "Decimal changed" unless widget.amount == BigDecimal("1234567890123456789012.12345678")
 raise "Binary changed" unless widget.payload == "\x00\xff".b
@@ -29,7 +32,7 @@ Widgets::Widget.transaction do
   Widgets::Outbox.create!(id: SecureRandom.uuid, widget_id: widget_id, event_type: "updated")
 end
 raise "Commit failed" unless widget.reload.optional_text == "committed" && Widgets::Outbox.one?
-raise "Outbox relationship failed" unless Widgets::Outbox.first.widget.id == widget_id
+raise "Outbox relationship failed" unless Widgets::Outbox.first!.widget&.id == widget_id
 
 Widgets::Widget.transaction do
   widget.update!(optional_text: "rolled back")

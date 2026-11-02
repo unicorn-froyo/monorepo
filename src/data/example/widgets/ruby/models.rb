@@ -17,11 +17,11 @@ module Widgets
     alias_attribute :name, :display_name
     alias_attribute :version, :revision
     alias_attribute :details, :metadata
-    belongs_to :owner, class_name: "Widgets::Owner", inverse_of: :widgets
+    belongs_to :owner, class_name: "Widgets::Owner", inverse_of: :widgets, optional: false
   end
 
   class Outbox < Postgresql::Record
     self.table_name = "widgets.outbox"
-    belongs_to :widget, class_name: "Widgets::Widget"
+    belongs_to :widget, class_name: "Widgets::Widget", optional: false
   end
 end
